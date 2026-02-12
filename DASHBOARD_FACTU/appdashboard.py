@@ -9,9 +9,6 @@ import os
 st.set_page_config(page_title="Dashboard de Productividad", page_icon="📊", layout="wide")
 
 # --- 1. CONFIGURACIÓN DE FUENTE DE DATOS (GOOGLE SHEETS) ---
-GSHEET_ID = "1NieWl-zz_WKyi_v3kGliTFPNUhsM_95gjqn9WyIN9gI"
-GSHEET_URL_BASE = f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/gviz/tq?tqx=out:csv&sheet="
-
 PERSISTED_DATA_DIR = "persisted_data"
 os.makedirs(PERSISTED_DATA_DIR, exist_ok=True)
 

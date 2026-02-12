@@ -141,7 +141,7 @@ with col1:
             st.code(traceback.format_exc())
 
 with col2:
-    st.subheader("Archivo 3: Facturación electronica")
+    st.subheader("Archivo 2: Facturación electronica")
 
     file3 = st.file_uploader("Sube el archivo de Facturación electronica", type=["xlsx", "xls", "csv"], key="file3")
 
