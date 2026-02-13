@@ -165,15 +165,15 @@ if 'initialized' not in st.session_state:
     st.session_state.initialized = True
 
 # --- CARGA DE ARCHIVOS ---
-st.title("📥 Carga de Archivos")
+st.title("📥 Carga de Archivos - Legalización, RIPS y Facturación")
 
-col1, col2, col3, col4 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 # --- Columna 1: Legalizaciones (PPL + Convenios + RIPS) ---
 with col1:
-    st.subheader("Archivo 1: Legalizaciones (PPL + Convenios + RIPS)")
+    st.subheader("Legalizaciones")
 
-    file1 = st.file_uploader("Sube el archivo de Legalizaciones", type=["xlsx", "xls", "csv"], key="file1")
+    file1 = st.file_uploader("Sube el archivo de Legalizaciones (PPL + CONVENIOS)", type=["xlsx", "xls", "csv"], key="file1")
 
     if file1 is not None:
         try:
@@ -214,6 +214,34 @@ with col1:
             # Botón para procesar y separar los datos
             if st.button("💾 Procesar y Guardar Legalizaciones", use_container_width=True):
                 try:
+                    # -------- FILTRO POR ESTADO --------
+                    # Solo incluye LEGALIZACIONES con estado válido (Activa)
+                    estados_validos_legalizaciones = ['Activo', 'ACTIVO']
+
+                    if 'ESTADO' in df_temp.columns or 'Estado' in df_temp.columns:
+                        # Detecta la columna de estado
+                        col_estado = 'ESTADO' if 'ESTADO' in df_temp.columns else 'Estado'
+
+                        # Normaliza los valores de ESTADO a mayúsculas para comparación
+                        df_temp[col_estado] = df_temp[col_estado].astype(str).str.strip().str.upper()
+
+                        # Filtra solo registros con estado válido
+                        registros_antes = len(df_temp)
+                        df_temp = df_temp[df_temp[col_estado].isin(estados_validos_legalizaciones)].copy()
+                        registros_despues = len(df_temp)
+
+                        st.info(
+                            f"📊 Filtrado por estado: {registros_despues:,} de {registros_antes:,} registros tienen estado válido ({', '.join(estados_validos_legalizaciones)})")
+
+                        if registros_despues == 0:
+                            st.warning(
+                                "⚠️ No hay registros con estado válido. Verifica los valores de la columna ESTADO en tu archivo.")
+                            st.write("**Valores de ESTADO encontrados:**", df_temp[col_estado].unique().tolist())
+                            st.stop()
+                    else:
+                        st.warning(
+                            "⚠️ No se encontró la columna 'ESTADO' en el archivo de LEGALIZACIONES. Se procesarán TODOS los registros sin filtrar por estado.")
+
                     # Verifica que existe la columna CONVENIO
                     if 'CONVENIO' not in df_temp.columns:
                         st.error("❌ No se encontró la columna 'CONVENIO' en el archivo")
@@ -242,7 +270,6 @@ with col1:
 
 **PPL:** {len(df_ppl):,} registros
 **Convenios:** {len(df_convenios):,} registros
-**RIPS:** {len(df_rips):,} registros
 
 **Total procesado:** {total_procesado:,} / {len(df_temp):,} filas
                     """)
@@ -264,19 +291,118 @@ with col1:
 
             st.code(traceback.format_exc())
 
-# --- Columna 2: Facturación ---
+# --- Columna 2: Legalizaciones (RIPS) ---
 with col2:
-    st.subheader("Archivo 2: Facturación")
+    st.subheader("RIPS")
 
-    file2 = st.file_uploader("Sube el archivo de facturación", type=["xlsx", "xls", "csv"], key="file2")
+    file2 = st.file_uploader("Sube el archivo de RIPS", type=["xlsx", "xls", "csv"], key="file2")
 
     if file2 is not None:
         try:
             # -------- LECTURA ROBUSTA DEL ARCHIVO --------
+            # Lee el archivo sin asumir dónde están los encabezados
             if file2.name.endswith('.csv'):
-                df_fact_temp = pd.read_csv(file2, header=None)
+                df_raw = pd.read_csv(file2, header=None)
             else:
-                df_fact_temp = pd.read_excel(file2, header=None)
+                df_raw = pd.read_excel(file2, header=None)
+
+            # Busca la fila que contiene 'CODIGO' para identificar los encabezados
+            header_row = None
+            for i, row in df_raw.iterrows():
+                if row.astype(str).str.strip().str.upper().str.startswith("CÓDIGO").any():
+                    header_row = i
+                    break
+
+            if header_row is None:
+                st.error("❌ No se encontró la fila de columnas que contiene 'CODIGO'")
+                st.stop()
+
+            # Relee el archivo usando la fila identificada como encabezado
+            if file2.name.endswith('.csv'):
+                df_temp = pd.read_csv(file2, header=header_row)
+            else:
+                df_temp = pd.read_excel(file2, header=header_row)
+
+            # Limpia los nombres de las columnas (espacios, saltos de línea)
+            df_temp.columns = (
+                df_temp.columns
+                .astype(str)
+                .str.strip()
+                .str.replace('\n', ' ')
+            )
+            st.success(f"✅ Archivo cargado: {len(df_temp):,} filas")
+            st.info(f"📋 Encabezados detectados en fila: {header_row + 1}")
+
+            # Botón para procesar y separar los datos
+            if st.button("💾 Procesar y Guardar RIPS", use_container_width=True):
+                try:
+                    # -------- FILTRO POR ESTADO --------
+                    # Solo incluye RIPS con estado válido (finalizadas/aprobadas)
+                    estados_validos_rips = ['Completo', 'COMPLETO']
+
+                    if 'ESTADO' in df_temp.columns or 'Estado' in df_temp.columns:
+                        # Detecta la columna de estado
+                        col_estado = 'ESTADO' if 'ESTADO' in df_temp.columns else 'Estado'
+
+                        # Normaliza los valores de ESTADO a mayúsculas para comparación
+                        df_temp[col_estado] = df_temp[col_estado].astype(str).str.strip().str.upper()
+
+                        # Filtra solo registros con estado válido
+                        registros_antes = len(df_temp)
+                        df_temp = df_temp[df_temp[col_estado].isin(estados_validos_rips)].copy()
+                        registros_despues = len(df_temp)
+
+                        st.info(f"📊 Filtrado por estado: {registros_despues:,} de {registros_antes:,} registros tienen estado válido ({', '.join(estados_validos_rips)})")
+
+                        if registros_despues == 0:
+                            st.warning("⚠️ No hay registros con estado válido. Verifica los valores de la columna ESTADO en tu archivo.")
+                            st.write("**Valores de ESTADO encontrados:**", df_temp[col_estado].unique().tolist())
+                            st.stop()
+                    else:
+                        st.warning("⚠️ No se encontró la columna 'ESTADO' en el archivo de RIPS. Se procesarán TODOS los registros sin filtrar por estado.")
+
+                    # Asigna df_temp a df_rips
+                    df_rips = df_temp.copy()
+
+                    # Guarda en session_state
+                    st.session_state.df_rips = df_rips if not df_rips.empty else None
+
+                    # Guarda archivo local en formato Parquet
+                    save_local(df_rips, FILES["RIPS"])
+
+                    # Muestra resumen de procesamiento
+                    st.success(f"""✅ Datos procesados y guardados:
+
+**RIPS:** {len(df_rips):,} registros
+                    """)
+
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Error al procesar: {e}")
+                    import traceback
+
+                    st.code(traceback.format_exc())
+
+        except Exception as e:
+            st.error(f"❌ Error al leer el archivo: {e}")
+            import traceback
+
+            st.code(traceback.format_exc())
+
+# --- Columna 3: Facturación ---
+with (col3):
+    st.subheader("Facturación")
+
+    file3 = st.file_uploader("Sube el archivo de Facturación", type=["xlsx", "xls", "csv"], key="file3")
+
+    if file3 is not None:
+        try:
+            # -------- LECTURA ROBUSTA DEL ARCHIVO --------
+            if file3.name.endswith('.csv'):
+                df_fact_temp = pd.read_csv(file3, header=None)
+            else:
+                df_fact_temp = pd.read_excel(file3, header=None)
 
             # Busca la fila que contiene 'NRO_LEGALIACION' para identificar los encabezados
             header_row = None
@@ -289,10 +415,10 @@ with col2:
                 st.error("❌ No se encontró la fila de columnas que contiene 'NRO_LEGALIACION'")
             else:
                 # Relee el archivo usando la fila identificada como encabezado
-                if file2.name.endswith('.csv'):
-                    df_fact = pd.read_csv(file2, header=header_row)
+                if file3.name.endswith('.csv'):
+                    df_fact = pd.read_csv(file3, header=header_row)
                 else:
-                    df_fact = pd.read_excel(file2, header=header_row)
+                    df_fact = pd.read_excel(file3, header=header_row)
 
                 # Limpia los nombres de las columnas
                 df_fact.columns = (
@@ -310,19 +436,19 @@ with col2:
         except Exception as e:
             st.error(f"❌ Error al leer archivo: {e}")
 
-# --- Columna 3: Facturación Electrónica ---
-with col3:
-    st.subheader("Archivo 3: Facturación electrónica")
+# --- Columna 4: Facturación Electrónica ---
+with col4:
+    st.subheader("Facturación electrónica")
 
-    file3 = st.file_uploader("Sube el archivo de Facturación electrónica", type=["xlsx", "xls", "csv"], key="file3")
+    file4 = st.file_uploader("Sube el archivo de Facturación electrónica", type=["xlsx", "xls", "csv"], key="file4")
 
-    if file3 is not None:
+    if file4 is not None:
         try:
             # -------- LECTURA ROBUSTA DEL ARCHIVO --------
-            if file3.name.endswith('.csv'):
-                df_fact_elec_temp = pd.read_csv(file3, header=None)
+            if file4.name.endswith('.csv'):
+                df_fact_elec_temp = pd.read_csv(file4, header=None)
             else:
-                df_fact_elec_temp = pd.read_excel(file3, header=None)
+                df_fact_elec_temp = pd.read_excel(file4, header=None)
 
             # Busca la fila que contiene 'IDENTIFICACION' para identificar los encabezados
             header_row = None
@@ -335,10 +461,10 @@ with col3:
                 st.error("❌ No se encontró la fila de columnas que contiene 'IDENTIFICACION'")
             else:
                 # Relee el archivo usando la fila identificada como encabezado
-                if file3.name.endswith('.csv'):
-                    df_fact_elec = pd.read_csv(file3, header=header_row)
+                if file4.name.endswith('.csv'):
+                    df_fact_elec = pd.read_csv(file4, header=header_row)
                 else:
-                    df_fact_elec = pd.read_excel(file3, header=header_row)
+                    df_fact_elec = pd.read_excel(file4, header=header_row)
 
                 # Limpia los nombres de las columnas
                 df_fact_elec.columns = (
@@ -498,8 +624,13 @@ def procesar_y_graficar(df, titulo, es_legalizacion=False):
 
     # Normalización de columnas de Usuario y Fecha
     # Busca variaciones comunes de los nombres de columnas
-    col_u = 'USUARIO' if 'USUARIO' in df.columns else 'Usuario'
-    col_f = next((c for c in ['FECHA_REAL', 'FECHA_FACTURA', 'FECHA', 'Fecha'] if c in df.columns), None)
+    col_u = None
+    for posible_col_u in ['USUARIO', 'Usuario', 'usuario', 'USUARIO FACTURADOR', 'USUARIO FACTURÓ', 'USER']:
+        if posible_col_u in df.columns:
+            col_u = posible_col_u
+            break
+
+    col_f = next((c for c in ['FECHA_REAL', 'FECHA_FACTURA', 'FECHA', 'Fecha', 'fecha', 'FECHA RADICACIÓN'] if c in df.columns), None)
 
     # Filtro por tipo (solo aplica para legalizaciones)
     if es_legalizacion and 'Tipo_Leg' in df.columns:
@@ -514,8 +645,13 @@ def procesar_y_graficar(df, titulo, es_legalizacion=False):
 
     # Determina si hay un filtro activo de usuario
     es_filtro_activo = 'Todos' not in sel_usuarios and len(sel_usuarios) > 0
-    if es_filtro_activo:
+    if es_filtro_activo and col_u is not None:
         df = df[df[col_u].isin(sel_usuarios)]
+
+    # Si no hay columna de usuario pero se solicita filtro de usuario
+    if es_filtro_activo and col_u is None:
+        st.warning(f"⚠️ No se encontró columna de usuario en {titulo}. No se puede filtrar por usuario.")
+        return
 
     if df.empty:
         st.warning(f"No hay datos para mostrar en {titulo} con los filtros actuales.")
