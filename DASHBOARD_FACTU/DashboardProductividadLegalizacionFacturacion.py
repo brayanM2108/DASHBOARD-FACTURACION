@@ -40,12 +40,20 @@ st.set_page_config(page_title="Dashboard de Productividad", page_icon="📊", la
 PERSISTED_DATA_DIR = "persisted_data"
 os.makedirs(PERSISTED_DATA_DIR, exist_ok=True)
 
+# Archivo maestro de facturadores (debe estar en el directorio del proyecto)
+FACTURADORES_FILE = "FACTURADORES.xlsx"
+
+# Nombre o índice de la hoja donde están los facturadores (0 = primera hoja, 1 = segunda, etc.)
+# También puedes usar el nombre de la hoja, por ejemplo: "Hoja1", "Facturadores", etc.
+FACTURADORES_SHEET = 1
+
 # Diccionario con las rutas de los archivos Parquet para cada tipo de dato
 FILES = {
     "PPL": os.path.join(PERSISTED_DATA_DIR, "df_ppl.parquet"),
     "Convenios": os.path.join(PERSISTED_DATA_DIR, "df_convenios.parquet"),
     "RIPS": os.path.join(PERSISTED_DATA_DIR, "df_rips.parquet"),
-    "Facturacion": os.path.join(PERSISTED_DATA_DIR, "df_facturacion.parquet")
+    "Facturacion": os.path.join(PERSISTED_DATA_DIR, "df_facturacion.parquet"),
+    "Facturadores": os.path.join(PERSISTED_DATA_DIR, "df_facturadores.parquet")
 }
 
 
@@ -82,6 +90,70 @@ def load_local(filepath):
                              None en caso contrario.
     """
     return pd.read_parquet(filepath) if os.path.exists(filepath) else None
+
+
+def cargar_facturadores_desde_local():
+    """
+    Carga el archivo maestro de facturadores desde el disco local.
+
+    Busca el archivo FACTURADORES.xlsx en el directorio del proyecto y lo carga.
+    Si no existe, intenta cargar desde el Parquet persistido.
+    Si ya está procesado y guardado en Parquet, lo carga de ahí.
+
+    Returns:
+        pd.DataFrame or None: DataFrame con columnas DOCUMENTO y NOMBRE,
+                             None si no existe el archivo.
+    """
+    # SIEMPRE cargar desde Excel para garantizar datos actualizados
+    if os.path.exists(FACTURADORES_FILE):
+        try:
+            # Cargar desde la hoja especificada
+            df = pd.read_excel(FACTURADORES_FILE, sheet_name=FACTURADORES_SHEET)
+
+            # Normalizar nombres de columnas
+            df.columns = df.columns.astype(str).str.strip().str.upper()
+
+            # Verificar columnas requeridas
+            if 'DOCUMENTO' in df.columns and 'NOMBRE' in df.columns:
+                # Eliminar filas donde DOCUMENTO o NOMBRE estén vacíos
+                df = df.dropna(subset=['DOCUMENTO', 'NOMBRE'])
+
+                # Convertir DOCUMENTO a string (ya viene como int64 del Excel)
+                df['DOCUMENTO'] = df['DOCUMENTO'].astype(str).str.strip()
+
+                # Normalizar NOMBRE
+                df['NOMBRE'] = df['NOMBRE'].astype(str).str.strip().str.upper()
+
+                # Filtrar filas con documentos vacíos
+                df = df[df['DOCUMENTO'] != '']
+                df = df[df['DOCUMENTO'] != 'nan']
+
+                # Guardar en Parquet para referencia
+                if not df.empty:
+                    save_local(df, FILES["Facturadores"])
+                    return df
+                else:
+                    st.warning(f"⚠️ El archivo {FACTURADORES_FILE} no contiene datos válidos después de limpiar")
+                    return None
+            else:
+                st.warning(f"⚠️ El archivo {FACTURADORES_FILE} no tiene las columnas DOCUMENTO y NOMBRE")
+                return None
+        except Exception as e:
+            st.warning(f"⚠️ No se pudo cargar {FACTURADORES_FILE}: {e}")
+            import traceback
+            st.error(traceback.format_exc())
+            return None
+
+    # Si no existe Excel, intenta cargar desde Parquet (backup)
+    if os.path.exists(FILES["Facturadores"]):
+        try:
+            df = pd.read_parquet(FILES["Facturadores"])
+            return df
+        except Exception as e:
+            st.warning(f"⚠️ Error al cargar Parquet: {e}")
+            return None
+
+    return None
 
 
 def buscar_usuario_en_fact_electronica(df_fact, df_fact_elec):
@@ -150,6 +222,79 @@ def buscar_usuario_en_fact_electronica(df_fact, df_fact_elec):
     return df_fact
 
 
+def cruzar_documento_a_nombre(df_rips, df_facturadores):
+    """
+    Reemplaza el DOCUMENTO del facturador por su NOMBRE en RIPS.
+
+    Esta función realiza un cruce tipo BUSCARX/VLOOKUP:
+    - df_rips: Contiene la columna 'USUARIO FACTURÓ' con documentos
+    - df_facturadores: Contiene el mapeo DOCUMENTO → NOMBRE
+
+    Proceso:
+    1. Valida que ambos DataFrames existan y no estén vacíos
+    2. Normaliza documentos (mayúsculas, sin espacios)
+    3. Crea mapeo DOCUMENTO → NOMBRE
+    4. Reemplaza valores en 'USUARIO FACTURÓ' por el nombre correspondiente
+
+    Args:
+        df_rips (pd.DataFrame): DataFrame de RIPS con columna 'USUARIO FACTURÓ'.
+        df_facturadores (pd.DataFrame): DataFrame con columnas 'DOCUMENTO' y 'NOMBRE'.
+
+    Returns:
+        pd.DataFrame: El DataFrame df_rips con 'USUARIO FACTURÓ' actualizado a nombres.
+                     Si no hay coincidencia, mantiene el documento original.
+    """
+    if df_rips is None or df_rips.empty:
+        return df_rips
+
+    if df_facturadores is None or df_facturadores.empty:
+        return df_rips
+
+    # Verificar que existan las columnas necesarias
+    if 'USUARIO FACTURÓ' not in df_rips.columns:
+        return df_rips
+
+    if 'DOCUMENTO' not in df_facturadores.columns or 'NOMBRE' not in df_facturadores.columns:
+        return df_rips
+
+    # Normalizar DOCUMENTO en ambos DataFrames
+    df_facturadores_norm = df_facturadores.copy()
+    df_facturadores_norm['DOCUMENTO'] = (
+        df_facturadores_norm['DOCUMENTO']
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+    df_facturadores_norm['NOMBRE'] = (
+        df_facturadores_norm['NOMBRE']
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
+    # Crear mapeo DOCUMENTO → NOMBRE
+    mapa_nombre = (
+        df_facturadores_norm
+        .dropna(subset=['DOCUMENTO', 'NOMBRE'])
+        .drop_duplicates(subset=['DOCUMENTO'])
+        .set_index('DOCUMENTO')['NOMBRE']
+    )
+
+    # Normalizar columna en RIPS
+    df_rips['USUARIO FACTURÓ'] = (
+        df_rips['USUARIO FACTURÓ']
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
+    # Aplicar cruce: si encuentra el documento, lo reemplaza por el nombre
+    df_rips['USUARIO FACTURÓ'] = df_rips['USUARIO FACTURÓ'].map(mapa_nombre).fillna(df_rips['USUARIO FACTURÓ'])
+
+    return df_rips
+
+
+
 # --- INICIALIZACIÓN ---
 # Carga los datos persistidos al iniciar la aplicación (solo una vez por sesión)
 if 'initialized' not in st.session_state:
@@ -157,6 +302,16 @@ if 'initialized' not in st.session_state:
     st.session_state.df_convenios = load_local(FILES["Convenios"])
     st.session_state.df_rips = load_local(FILES["RIPS"])
     st.session_state.df_facturacion = load_local(FILES["Facturacion"])
+
+    # Cargar facturadores desde archivo local (FACTURADORES.xlsx)
+    st.session_state.df_facturadores = cargar_facturadores_desde_local()
+
+    # Aplicar cruce DOCUMENTO → NOMBRE a RIPS si ya hay datos cargados
+    if st.session_state.df_rips is not None and st.session_state.df_facturadores is not None:
+        st.session_state.df_rips = cruzar_documento_a_nombre(
+            st.session_state.df_rips,
+            st.session_state.df_facturadores
+        )
 
     st.session_state.df_fact_elec = load_local(
         os.path.join(PERSISTED_DATA_DIR, "df_fact_elec.parquet")
@@ -166,6 +321,30 @@ if 'initialized' not in st.session_state:
 
 # --- CARGA DE ARCHIVOS ---
 st.title("📥 Carga de Archivos - Legalización, RIPS y Facturación")
+
+# --- INDICADOR DE FACTURADORES ---
+st.subheader("👤 Maestro de Facturadores (Archivo Local)")
+if st.session_state.df_facturadores is not None and not st.session_state.df_facturadores.empty:
+    col_ind1, col_ind2 = st.columns([4, 1])
+    with col_ind1:
+        st.success(f"✅ Archivo **{FACTURADORES_FILE}** cargado: {len(st.session_state.df_facturadores):,} facturadores")
+        st.caption(f"📂 Ubicación: `{os.path.abspath(FACTURADORES_FILE)}`")
+    with col_ind2:
+        if st.button("🔄 Recargar", key="recargar_facturadores", use_container_width=True):
+            st.session_state.df_facturadores = cargar_facturadores_desde_local()
+            st.rerun()
+else:
+    st.warning(f"⚠️ Archivo **{FACTURADORES_FILE}** no encontrado")
+    st.info(f"""
+    📝 **Instrucciones:**
+    1. Crea un archivo Excel llamado `{FACTURADORES_FILE}` en el directorio del proyecto
+    2. Asegúrate de que tenga las columnas: **DOCUMENTO** y **NOMBRE**
+    3. Guarda el archivo y recarga la aplicación
+    
+    📂 Ubicación esperada: `{os.path.abspath(FACTURADORES_FILE)}`
+    """)
+
+st.markdown("---")
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -363,6 +542,14 @@ with col2:
 
                     # Asigna df_temp a df_rips
                     df_rips = df_temp.copy()
+
+                    # -------- CRUCE DOCUMENTO → NOMBRE --------
+                    # Aplica el cruce con el maestro de facturadores
+                    if st.session_state.df_facturadores is not None:
+                        df_rips = cruzar_documento_a_nombre(df_rips, st.session_state.df_facturadores)
+                        st.info("🔄 Cruce DOCUMENTO → NOMBRE aplicado exitosamente")
+                    else:
+                        st.warning("⚠️ No hay maestro de facturadores cargado. Los documentos en 'USUARIO FACTURÓ' no se convertirán a nombres.")
 
                     # Guarda en session_state
                     st.session_state.df_rips = df_rips if not df_rips.empty else None
@@ -625,7 +812,7 @@ def procesar_y_graficar(df, titulo, es_legalizacion=False):
     # Normalización de columnas de Usuario y Fecha
     # Busca variaciones comunes de los nombres de columnas
     col_u = None
-    for posible_col_u in ['USUARIO', 'Usuario', 'usuario', 'USUARIO FACTURADOR', 'USUARIO FACTURÓ', 'USER']:
+    for posible_col_u in ['USUARIO', 'Usuario', 'usuario', 'USUARIO FACTURÓ']:
         if posible_col_u in df.columns:
             col_u = posible_col_u
             break
