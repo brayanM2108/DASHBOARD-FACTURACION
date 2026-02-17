@@ -46,14 +46,14 @@ def render_sidebar():
 
         if lista_facturadores:
             usuarios_seleccionados = st.multiselect(
-                "Seleccionar facturadores",
-                options=lista_facturadores,
-                default=lista_facturadores,
+                "Seleccionar Facturador",
+                options=['Todos'] + lista_facturadores,
+                default=['Todos'],
                 key="filter_usuarios"
             )
         else:
             usuarios_seleccionados = []
-            st.info("No hay facturadores disponibles. Carga el archivo maestro.")
+            st.info("No hay facturadores disponibles. Carga los archivos de datos.")
 
         # Botón para aplicar filtros
         aplicar_filtros = st.button("🔄 Aplicar Filtros", use_container_width=True)
@@ -110,12 +110,12 @@ def render_user_filter(df_facturadores, key_prefix=""):
 
     if not lista_facturadores:
         st.info("No hay facturadores disponibles.")
-        return []
+        return ['Todos']
 
     usuarios_seleccionados = st.multiselect(
-        "Seleccionar facturadores",
-        options=lista_facturadores,
-        default=lista_facturadores,
+        "Seleccionar Facturador",
+        options=['Todos'] + lista_facturadores,
+        default=['Todos'],
         key=f"{key_prefix}_usuarios"
     )
 
@@ -137,8 +137,15 @@ def render_state_data(key_prefix=""):
     estado = {}
 
     # Muestra el estado de carga de cada dataset en la barra lateral
-    for nombre, key in [("PPL", "df_ppl"), ("Convenios", "df_convenios"),
-                        ("RIPS", "df_rips"), ("Facturación", "df_facturacion")]:
+    datasets = [
+        ("PPL", "df_ppl"),
+        ("Convenios", "df_convenios"),
+        ("RIPS", "df_rips"),
+        ("Facturación", "df_facturacion"),
+        ("Facturadores", "df_facturadores")
+    ]
+
+    for nombre, key in datasets:
         df = st.session_state.get(key)
         if df is not None and not df.empty:
             st.sidebar.success(f"✅ {nombre}: {len(df):,} registros")
