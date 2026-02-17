@@ -43,8 +43,8 @@ COLUMN_MARKERS = {
 # --- Nombres de columnas normalizadas ---
 # IMPORTANTE: Todas en mayúsculas porque las columnas se normalizan a mayúsculas
 COLUMN_NAMES = {
-    "usuario": ["USUARIO", "USUARIO FACTURÓ", "USUARIO_FACTURO"],
-    "fecha": ["FECHA_REAL", "FECHA_FACTURA", "FECHA", "FECHA RADICACIÓN", "FECHA LEGALIZACIÓN"],
+    "usuario": ["USUARIO", "USUARIO FACTURÓ", "USUARIO FACTURO", "USUARIO FACTUR", "USUARIO_FACTURO"],
+    "fecha": ["FECHA_REAL", "FECHA_FACTURA", "FECHA", "FECHA RADICACIÓN", "FECHA LEGALIZACIÓN", "FECHA LEGALIZACION"],
     "estado": ["ESTADO"],
     "convenio": "CONVENIO"
 }
