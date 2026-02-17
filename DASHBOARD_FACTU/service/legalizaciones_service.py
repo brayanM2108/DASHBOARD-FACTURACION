@@ -71,8 +71,9 @@ def filtrar_legalizaciones(df, start_date, end_date, usuarios_seleccionados=None
     # Filtrar por fecha
     df_filtered = filter_by_date_range(df, fecha_col, start_date, end_date)
 
-    # Filtrar por usuarios si se especificaron
-    if usuarios_seleccionados:
+    # Filtrar por usuarios si se especificaron y NO incluye "Todos"
+    es_filtro_activo = usuarios_seleccionados and 'Todos' not in usuarios_seleccionados and len(usuarios_seleccionados) > 0
+    if es_filtro_activo:
         usuario_col = find_column_variant(df_filtered, COLUMN_NAMES["usuario"])
         if usuario_col and usuario_col in df_filtered.columns:
             df_filtered = df_filtered[df_filtered[usuario_col].isin(usuarios_seleccionados)]
