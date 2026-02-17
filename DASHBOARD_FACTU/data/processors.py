@@ -33,8 +33,10 @@ def process_legalizaciones(df, estado_column="ESTADO", fecha_column="FECHA_REAL"
     # Convertir fecha
     df = parse_date_column(df, fecha_column)
 
-    # Filtrar por estado válido
+    # Normalizar y filtrar por estado válido
     if estado_column in df.columns:
+        # Normalizar valores de estado a mayúsculas
+        df[estado_column] = df[estado_column].astype(str).str.strip().str.upper()
         df = df[df[estado_column].isin(ESTADOS_VALIDOS_LEGALIZACIONES)]
 
     # Separar PPL y Convenios
@@ -66,8 +68,9 @@ def process_rips(df, estado_column="ESTADO", fecha_column="FECHA_REAL"):
     # Convertir fecha
     df = parse_date_column(df, fecha_column)
 
-    # Filtrar por estado válido
+    # Normalizar y filtrar por estado válido
     if estado_column in df.columns:
+        df[estado_column] = df[estado_column].astype(str).str.strip().str.upper()
         df = df[df[estado_column].isin(ESTADOS_VALIDOS_RIPS)]
 
     return df
@@ -111,8 +114,9 @@ def process_facturacion_electronica(df, estado_column="ESTADO", fecha_column="FE
     # Convertir fecha
     df = parse_date_column(df, fecha_column)
 
-    # Filtrar por estado válido
+    # Normalizar y filtrar por estado válido
     if estado_column in df.columns:
+        df[estado_column] = df[estado_column].astype(str).str.strip().str.upper()
         df = df[df[estado_column].isin(ESTADOS_VALIDOS_FACTURACION_ELECTRONICA)]
 
     return df
