@@ -1,9 +1,11 @@
 """
 Dashboard de Productividad - Aplicación Principal
 ==================================================
+Autor: Brayan Melo
+Versión: 2.0
+==================================================
 Punto de entrada de la aplicación Streamlit.
 """
-
 import streamlit as st
 from config.settings import PAGE_CONFIG
 from data.loaders import load_all_persisted_data, load_facturadores_master
@@ -30,6 +32,14 @@ def init_session_state():
         # Cargar facturadores maestro si no hay datos
         if st.session_state['df_facturadores'] is None:
             st.session_state['df_facturadores'] = load_facturadores_master()
+
+        # Aplicar cruce DOCUMENTO → NOMBRE a RIPS si ya hay datos cargados
+        if st.session_state['df_rips'] is not None and st.session_state['df_facturadores'] is not None:
+            from service.rips_service import cruzar_documento_a_nombre
+            st.session_state['df_rips'] = cruzar_documento_a_nombre(
+                st.session_state['df_rips'],
+                st.session_state['df_facturadores']
+            )
 
         st.session_state['initialized'] = True
 
