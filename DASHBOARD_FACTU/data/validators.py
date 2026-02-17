@@ -96,11 +96,9 @@ def validate_facturacion(df):
     Returns:
         tuple: (is_valid, message)
     """
-    usuario_col = find_column_variant(df, COLUMN_NAMES["usuario"])
-    fecha_col = find_column_variant(df, COLUMN_NAMES["fecha"])
-
-    if usuario_col is None or fecha_col is None:
-        return False, "Faltan columnas de USUARIO o FECHA"
+    # Buscar columna NRO_LEGALIACION o similar
+    if "NRO_LEGALIACION" not in df.columns and "NRO_LEGALIZACION" not in df.columns:
+        return False, "Falta columna NRO_LEGALIACION o NRO_LEGALIZACION"
 
     return True, "Validación exitosa"
 
@@ -113,9 +111,11 @@ def validate_facturacion_electronica(df):
         tuple: (is_valid, message)
     """
     required = ["ESTADO"]
+    usuario_col = find_column_variant(df, COLUMN_NAMES["usuario"])
+    fecha_col = find_column_variant(df, COLUMN_NAMES["fecha"])
 
-    if "USUARIO FACTURÓ" not in df.columns or "FECHA RADICACIÓN" not in df.columns:
-        return False, "Faltan columnas de USUARIO FACTURÓ o FECHA RADICACIÓN"
+    if usuario_col is None or fecha_col is None:
+        return False, "Faltan columnas de USUARIO o FECHA"
 
     is_valid, missing = validate_required_columns(df, required)
     if not is_valid:
