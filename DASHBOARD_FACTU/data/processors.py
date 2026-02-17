@@ -176,3 +176,57 @@ def aggregate_by_user(df, usuario_column="USUARIO", date_column=None, group_by_d
         agg_df = df.groupby(usuario_column).size().reset_index(name='CANTIDAD')
 
     return agg_df
+
+
+def merge_facturacion_with_electronica(df_facturacion, df_fact_elec):
+    """
+    Cruza facturación con facturación electrónica para obtener el USUARIO.
+
+    Busca y asigna el usuario de facturación electrónica a cada factura mediante
+    un cruce BUSCARX entre NRO_FACTURACLI (facturación) y FACTURA (electrónica).
+
+    Args:
+        df_facturacion (pd.DataFrame): DataFrame de facturación con columna 'NRO_FACTURACLI'
+        df_fact_elec (pd.DataFrame): DataFrame de facturación electrónica con columnas
+                                     'FACTURA', 'USUARIO' y 'ESTADO'
+
+    Returns:
+        pd.DataFrame: DataFrame de facturación con columna 'USUARIO' agregada/actualizada
+    """
+    if df_facturacion is None or df_facturacion.empty:
+        return df_facturacion
+
+    if df_fact_elec is None or df_fact_elec.empty:
+        return df_facturacion
+
+    # Crear una copia para no modificar el original
+    df_result = df_facturacion.copy()
+
+    # Normalizar columnas de texto a mayúsculas
+    for df in [df_result, df_fact_elec]:
+        for col in df.columns:
+            if df[col].dtype == object:
+                df[col] = df[col].astype(str).str.strip().str.upper()
+
+    # Filtrar solo facturas electrónicas en estado ACTIVO
+    estado_col = 'ESTADO' if 'ESTADO' in df_fact_elec.columns else 'Estado'
+    if estado_col in df_fact_elec.columns:
+        df_fact_elec_activa = df_fact_elec[df_fact_elec[estado_col] == 'ACTIVO'].copy()
+    else:
+        df_fact_elec_activa = df_fact_elec.copy()
+
+    # Crear mapeo FACTURA → USUARIO
+    if 'FACTURA' in df_fact_elec_activa.columns and 'USUARIO' in df_fact_elec_activa.columns:
+        mapa_usuario = (
+            df_fact_elec_activa
+            .dropna(subset=['FACTURA', 'USUARIO'])
+            .drop_duplicates(subset=['FACTURA'])
+            .set_index('FACTURA')['USUARIO']
+        )
+
+        # Asignar USUARIO a facturación mediante NRO_FACTURACLI
+        if 'NRO_FACTURACLI' in df_result.columns:
+            df_result['USUARIO'] = df_result['NRO_FACTURACLI'].map(mapa_usuario)
+
+    return df_result
+
