@@ -36,6 +36,9 @@ def procesar_rips(df, df_facturadores=None):
         if usuario_col:
             df_rips = merge_with_facturadores(df_rips, df_facturadores, usuario_col)
 
+        # Cruzar documento a nombre
+        df_rips = cruzar_documento_a_nombre(df_rips, df_facturadores)
+
     return {
         "df_rips": df_rips,
         "error": None
@@ -66,13 +69,91 @@ def filtrar_rips(df, start_date, end_date, usuarios_seleccionados=None):
     # Filtrar por fecha
     df_filtered = filter_by_date_range(df, fecha_col, start_date, end_date)
 
-    # Filtrar por usuarios si se especificaron
-    if usuarios_seleccionados:
+    # Filtrar por usuarios si se especificaron y NO incluye "Todos"
+    es_filtro_activo = usuarios_seleccionados and 'Todos' not in usuarios_seleccionados and len(usuarios_seleccionados) > 0
+    if es_filtro_activo:
         usuario_col = find_column_variant(df_filtered, COLUMN_NAMES["usuario"])
         if usuario_col and usuario_col in df_filtered.columns:
             df_filtered = df_filtered[df_filtered[usuario_col].isin(usuarios_seleccionados)]
 
     return df_filtered
+
+def cruzar_documento_a_nombre(df_rips, df_facturadores):
+    """
+    Reemplaza el DOCUMENTO del facturador por su NOMBRE en RIPS.
+
+    Esta función realiza un cruce tipo BUSCARX/VLOOKUP:
+    - df_rips: Contiene la columna de usuario con documentos
+    - df_facturadores: Contiene el mapeo DOCUMENTO → NOMBRE
+
+    Proceso:
+    1. Valida que ambos DataFrames existan y no estén vacíos
+    2. Busca la columna de usuario dinámicamente (ej: 'USUARIO FACTURÓ', 'USUARIO FACTUR')
+    3. Normaliza documentos (mayúsculas, sin espacios)
+    4. Crea mapeo DOCUMENTO → NOMBRE
+    5. Reemplaza valores en columna de usuario por el nombre correspondiente
+
+    Args:
+        df_rips (pd.DataFrame): DataFrame de RIPS con columna de usuario.
+        df_facturadores (pd.DataFrame): DataFrame con columnas 'DOCUMENTO' y 'NOMBRE'.
+
+    Returns:
+        pd.DataFrame: El DataFrame df_rips con columna de usuario actualizada a nombres.
+                     Si no hay coincidencia, mantiene el documento original.
+    """
+    if df_rips is None or df_rips.empty:
+        return df_rips
+
+    if df_facturadores is None or df_facturadores.empty:
+        return df_rips
+
+    # Buscar la columna de usuario dinámicamente
+    usuario_col = find_column_variant(df_rips, COLUMN_NAMES["usuario"])
+
+    if usuario_col is None:
+        return df_rips
+
+    if 'DOCUMENTO' not in df_facturadores.columns or 'NOMBRE' not in df_facturadores.columns:
+        return df_rips
+
+    # Crear una copia para no modificar el original
+    df_rips = df_rips.copy()
+
+    # Normalizar DOCUMENTO en ambos DataFrames
+    df_facturadores_norm = df_facturadores.copy()
+    df_facturadores_norm['DOCUMENTO'] = (
+        df_facturadores_norm['DOCUMENTO']
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+    df_facturadores_norm['NOMBRE'] = (
+        df_facturadores_norm['NOMBRE']
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
+    # Crear mapeo DOCUMENTO → NOMBRE
+    mapa_nombre = (
+        df_facturadores_norm
+        .dropna(subset=['DOCUMENTO', 'NOMBRE'])
+        .drop_duplicates(subset=['DOCUMENTO'])
+        .set_index('DOCUMENTO')['NOMBRE']
+    )
+
+    # Normalizar columna en RIPS
+    df_rips[usuario_col] = (
+        df_rips[usuario_col]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
+    # Aplicar cruce: si encuentra el documento, lo reemplaza por el nombre
+    df_rips[usuario_col] = df_rips[usuario_col].map(mapa_nombre).fillna(df_rips[usuario_col])
+
+    return df_rips
 
 
 def calcular_productividad_rips(df):
