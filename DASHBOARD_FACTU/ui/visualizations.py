@@ -6,7 +6,6 @@ Funciones para crear gráficos con Plotly y Matplotlib.
 
 import streamlit as st
 import plotly.express as px
-import plotly.graph_objects as go
 import pandas as pd
 
 
@@ -25,8 +24,13 @@ def plot_bar_chart(df, x_col, y_col, title, color=None):
         st.info("No hay datos para graficar.")
         return
 
+    # Asegurar que la columna X se trate como texto (categoría) para evitar
+    # que valores numéricos se muestren como decimales en el eje X
+    df_plot = df.copy()
+    df_plot[x_col] = df_plot[x_col].astype(str)
+
     fig = px.bar(
-        df,
+        df_plot,
         x=x_col,
         y=y_col,
         title=title,
@@ -35,7 +39,11 @@ def plot_bar_chart(df, x_col, y_col, title, color=None):
     )
 
     fig.update_traces(textposition='outside')
-    fig.update_layout(xaxis_tickangle=-45, showlegend=True if color else False)
+    fig.update_layout(
+        xaxis_tickangle=-45,
+        showlegend=True if color else False,
+        xaxis_type='category'
+    )
 
     st.plotly_chart(fig, use_container_width=True)
 
