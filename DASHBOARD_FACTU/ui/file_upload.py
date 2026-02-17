@@ -11,7 +11,7 @@ from service.legalizaciones_service import procesar_legalizaciones
 from service.rips_service import procesar_rips
 from service.facturador_service import procesar_facturacion
 from data.processors import process_facturacion_electronica
-from ui.components import show_success_message, show_error_message, show_info_message, show_warning_message
+from ui.components import show_success_message, show_error_message, show_warning_message
 
 
 def render_file_upload_section():
@@ -211,6 +211,12 @@ def render_rips_upload():
                 st.info(f"📋 Archivo cargado: {len(df):,} filas, {len(df.columns)} columnas")
 
                 df_facturadores = st.session_state.get('df_facturadores')
+
+                if df_facturadores is None or df_facturadores.empty:
+                    show_warning_message("⚠️ No hay facturadores cargados. Los documentos no se convertirán a nombres.")
+                else:
+                    st.info(f"✅ Facturadores disponibles: {len(df_facturadores):,} registros")
+
                 result = procesar_rips(df, df_facturadores)
 
                 if result.get("error"):
@@ -223,6 +229,10 @@ def render_rips_upload():
                 if count_rips == 0:
                     show_warning_message("No se encontraron registros después del procesamiento. Verifica que el archivo tenga registros con estado 'COMPLETO'.")
                     return
+
+                # Mostrar muestra de la columna USUARIO FACTURÓ para verificar el cruce
+                if 'USUARIO FACTURÓ' in df_rips.columns:
+                    st.info(f"📊 Muestra de usuarios: {df_rips['USUARIO FACTURÓ'].unique()[:5].tolist()}")
 
                 st.session_state['df_rips'] = df_rips
                 save_all_data({"rips": df_rips})
@@ -321,18 +331,78 @@ def render_facturacion_electronica_upload():
 
 def render_facturadores_reload():
     """Renderiza el botón para recargar facturadores."""
+    df_facturadores = st.session_state.get('df_facturadores')
+
+    if df_facturadores is not None and not df_facturadores.empty:
+        st.success(f"✅ Facturadores cargados: {len(df_facturadores):,} registros")
+        st.info(f"📋 Columnas disponibles: {', '.join(df_facturadores.columns.tolist())}")
+
+        with st.expander("👀 Ver muestra de datos"):
+            st.dataframe(df_facturadores.head(10))
+    else:
+        st.warning("⚠️ No hay facturadores cargados")
+
     st.info("El archivo de facturadores se carga automáticamente desde `FACTURADORES.xlsx`.")
 
-    if st.button("🔄 Recargar Facturadores", key="btn_reload_fact"):
-        with st.spinner("Recargando facturadores..."):
-            df_facturadores = load_facturadores_master()
+    col1, col2 = st.columns(2)
 
-            if df_facturadores is None:
-                show_error_message("No se pudo cargar el archivo de facturadores.")
-                return
+    with col1:
+        if st.button("🔄 Recargar Facturadores", key="btn_reload_fact", use_container_width=True):
+            with st.spinner("Recargando facturadores..."):
+                df_facturadores = load_facturadores_master()
 
-            st.session_state['df_facturadores'] = df_facturadores
-            save_all_data({"facturadores": df_facturadores})
+                if df_facturadores is None:
+                    show_error_message("No se pudo cargar el archivo de facturadores.")
+                    return
 
-            show_success_message("Facturadores recargados correctamente.")
-            st.rerun()
+                st.session_state['df_facturadores'] = df_facturadores
+                save_all_data({"facturadores": df_facturadores})
+
+                show_success_message("Facturadores recargados correctamente.")
+                st.rerun()
+
+    with col2:
+        if st.button("🔄 Recruzar RIPS", key="btn_recruzar_rips", use_container_width=True):
+            with st.spinner("Recruzando RIPS con facturadores..."):
+                df_rips = st.session_state.get('df_rips')
+                df_facturadores = st.session_state.get('df_facturadores')
+
+                if df_rips is None or df_rips.empty:
+                    show_error_message("No hay datos de RIPS cargados.")
+                    return
+
+                if df_facturadores is None or df_facturadores.empty:
+                    show_error_message("No hay facturadores cargados.")
+                    return
+
+                from service.rips_service import cruzar_documento_a_nombre
+                from data.validators import find_column_variant
+                from config.settings import COLUMN_NAMES
+
+                # Buscar columna de usuario
+                usuario_col = find_column_variant(df_rips, COLUMN_NAMES["usuario"])
+
+                if usuario_col is None:
+                    show_error_message("No se encontró columna de usuario en RIPS.")
+                    return
+
+                # Contar documentos numéricos ANTES del cruce
+                docs_antes = df_rips[usuario_col].astype(str).apply(lambda x: x.isnumeric()).sum()
+
+                # Aplicar cruce
+                df_rips_cruzado = cruzar_documento_a_nombre(df_rips, df_facturadores)
+
+                # Contar documentos numéricos DESPUÉS del cruce
+                docs_despues = df_rips_cruzado[usuario_col].astype(str).apply(lambda x: x.isnumeric()).sum()
+                docs_convertidos = docs_antes - docs_despues
+
+                # Guardar
+                st.session_state['df_rips'] = df_rips_cruzado
+                save_all_data({"rips": df_rips_cruzado})
+
+                if docs_convertidos > 0:
+                    show_success_message(f"✅ RIPS recruzados: {docs_convertidos:,} documentos convertidos a nombres.")
+                else:
+                    show_warning_message(f"⚠️ No se convirtieron documentos. {docs_despues:,} documentos no están en el maestro de facturadores.")
+
+                st.rerun()
