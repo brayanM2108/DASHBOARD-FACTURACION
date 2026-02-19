@@ -23,7 +23,8 @@ def load_all_persisted_data():
         "rips": load_from_parquet(FILES["RIPS"]),
         "facturacion": load_from_parquet(FILES["Facturacion"]),
         "facturadores": load_from_parquet(FILES["Facturadores"]),
-        "facturacion_electronica": load_from_parquet(FILES["FacturacionElectronica"])
+        "facturacion_electronica": load_from_parquet(FILES["FacturacionElectronica"]),
+        "procesos": load_from_parquet(FILES["ArchivoProcesos"])
     }
 
 
@@ -34,7 +35,7 @@ def save_all_data(data_dict):
     Args:
         data_dict (dict): Diccionario con DataFrames a guardar
             Claves esperadas: 'ppl', 'convenios', 'rips', 'facturacion',
-            'facturadores', 'facturacion_electronica'
+            'facturadores', 'facturacion_electronica', 'procesos'
 
     Returns:
         dict: Diccionario con resultado de cada operación (True/False)
@@ -61,6 +62,9 @@ def save_all_data(data_dict):
             data_dict["facturacion_electronica"],
             FILES["FacturacionElectronica"]
         )
+
+    if "procesos" in data_dict:
+        results["procesos"] = save_to_parquet(data_dict["procesos"], FILES["ArchivoProcesos"])
 
     return results
 
@@ -94,3 +98,53 @@ def load_uploaded_file(file, column_marker):
     """
     df, header_row = read_file_robust(file, column_marker)
     return df
+
+
+def load_procesos(file_or_url):
+    """
+     Carga datos de procesos administrativos desde Excel o Google Sheets
+
+     Args:
+         file_or_url: Archivo subido o URL de Google Sheets
+
+     Returns:
+         pd.DataFrame: DataFrame con los datos de procesos
+     """
+    try:
+        # Si es una URL de Google Sheets
+        if isinstance(file_or_url, str) and 'docs.google.com/spreadsheets' in file_or_url:
+            # Convertir URL de Google Sheets a formato exportable
+            if '/edit' in file_or_url:
+                sheet_id = file_or_url.split('/d/')[1].split('/')[0]
+                url_export = f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx'
+            else:
+                url_export = file_or_url
+
+            df = pd.read_excel(url_export)
+        else:
+            # Es un archivo subido
+            df = pd.read_excel(file_or_url)
+
+        # Normalizar nombres de columnas
+        df.columns = df.columns.str.strip().str.upper()
+
+        # Validar columnas requeridas
+        columnas_requeridas = ['FECHA', 'NOMBRE', 'DOCUMENTO', 'PROCESO', 'CANTIDAD']
+        columnas_faltantes = [col for col in columnas_requeridas if col not in df.columns]
+
+        if columnas_faltantes:
+            raise ValueError(f"Faltan las siguientes columnas: {', '.join(columnas_faltantes)}")
+
+        # Convertir fecha al formato correcto
+        df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y', errors='coerce')
+
+        # Convertir cantidad a numérico
+        df['CANTIDAD'] = pd.to_numeric(df['CANTIDAD'], errors='coerce')
+
+        # Eliminar filas con valores nulos en columnas críticas
+        df = df.dropna(subset=['FECHA', 'NOMBRE', 'CANTIDAD'])
+
+        return df
+
+    except Exception as e:
+        raise ValueError(f"Error al cargar archivo de procesos: {str(e)}")
