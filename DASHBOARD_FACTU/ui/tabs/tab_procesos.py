@@ -11,9 +11,9 @@ def render_tab_procesos(filtros):
     """Renderiza el tab de procesos administrativos"""
     st.header("📊 Productividad de Procesos Administrativos")
 
-    st.info("📊 Sincroniza datos de procesos administrativos desde Google Sheets")
+    st.info("Sincroniza los datos para poder visualizar las métricas y gráficos relacionados.")
 
-    if st.button("🔄 Sincronizar Datos de Procesos", key="btn_sync_sheets", use_container_width=True):
+    if st.button("🔄 Sincronizar Desde Google Sheets", key="btn_sync_sheets", use_container_width=True):
             with st.spinner("Sincronizando datos desde Google Sheets..."):
                 try:
 

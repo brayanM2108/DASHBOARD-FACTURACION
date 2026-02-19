@@ -32,7 +32,7 @@ FACTURADORES_FILE = "FACTURADORES.xlsx"
 FACTURADORES_SHEET = 1
 
 # --- URL de Google Sheets ---
-PROCESOS_SHEET_URL = get_env_var('PROCESOS_SHEET_URL', '')
+PROCESOS_SHEET_URL = st.secrets('PROCESOS_SHEET_URL', '')
 
 # --- Rutas de archivos Parquet ---
 FILES = {
