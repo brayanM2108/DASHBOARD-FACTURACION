@@ -178,6 +178,76 @@ def aggregate_by_user(df, usuario_column="USUARIO", date_column=None, group_by_d
     return agg_df
 
 
+def process_procesos(df):
+    """
+    Procesa el DataFrame de procesos administrativos desde Google Sheets.
+
+    Args:
+        df (pd.DataFrame): DataFrame de procesos cargado desde Google Sheets
+
+    Returns:
+        pd.DataFrame: DataFrame procesado con columnas normalizadas
+    """
+    if df is None or df.empty:
+        return None
+
+    # Detectar si la primera fila contiene encabezados reales
+    # Verificar si la primera fila tiene valores como 'FECHA', 'NOMBRE', etc.
+    primera_fila = df.iloc[0].astype(str).str.upper()
+
+    if 'FECHA' in primera_fila.values or 'NOMBRE' in primera_fila.values:
+        # La primera fila son los encabezados reales
+        df.columns = df.iloc[0].astype(str).str.strip().str.upper()
+        df = df.iloc[1:].reset_index(drop=True)
+    else:
+        # Normalizar nombres de columnas existentes
+        df.columns = df.columns.str.strip().str.upper()
+
+    # Validar columnas requeridas
+    columnas_requeridas = ['FECHA', 'NOMBRE', 'DOCUMENTO', 'PROCESO', 'CANTIDAD']
+
+    # Buscar variantes de nombres de columnas
+    mapeo_columnas = {}
+    for col_requerida in columnas_requeridas:
+        if col_requerida not in df.columns:
+            # Buscar variantes
+            for col in df.columns:
+                if col_requerida in col or col in col_requerida:
+                    mapeo_columnas[col] = col_requerida
+                    break
+
+    # Renombrar columnas si se encontraron variantes
+    if mapeo_columnas:
+        df = df.rename(columns=mapeo_columnas)
+
+    # Verificar columnas faltantes
+    columnas_faltantes = [col for col in columnas_requeridas if col not in df.columns]
+    if columnas_faltantes:
+        raise ValueError(f"Faltan las siguientes columnas: {', '.join(columnas_faltantes)}. Columnas disponibles: {', '.join(df.columns.tolist())}")
+
+    # Eliminar filas completamente vacías
+    df = df.dropna(how='all')
+
+    # Convertir fecha al formato correcto
+    try:
+        # Intentar múltiples formatos de fecha
+        df['FECHA'] = pd.to_datetime(df['FECHA'], errors='coerce')
+    except Exception as e:
+        print(f"Advertencia: Error al convertir fechas: {e}")
+
+    # Convertir cantidad a numérico
+    df['CANTIDAD'] = pd.to_numeric(df['CANTIDAD'], errors='coerce')
+
+    # Eliminar filas con valores nulos en columnas críticas
+    df = df.dropna(subset=['FECHA', 'NOMBRE', 'CANTIDAD'])
+
+    # Limpiar espacios en blanco en columnas de texto
+    for col in ['NOMBRE', 'DOCUMENTO', 'PROCESO']:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
+
+    return df
+
 def merge_facturacion_with_electronica(df_facturacion, df_fact_elec):
     """
     Cruza facturación con facturación electrónica para obtener el USUARIO.
