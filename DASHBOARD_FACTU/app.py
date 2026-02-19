@@ -14,6 +14,7 @@ from ui.file_upload import render_file_upload_section
 from ui.tabs.tab_legalizaciones import render_tab_legalizacion
 from ui.tabs.tab_rips import render_tab_rips
 from ui.tabs.tab_facturacion import render_tab_facturacion
+from ui.tabs.tab_procesos import render_tab_procesos
 
 
 def init_session_state():
@@ -28,6 +29,7 @@ def init_session_state():
         st.session_state['df_facturacion'] = data.get('facturacion')
         st.session_state['df_facturadores'] = data.get('facturadores')
         st.session_state['df_facturacion_electronica'] = data.get('facturacion_electronica')
+        st.session_state['df_procesos'] = data.get('procesos')
 
         # Cargar facturadores maestro si no hay datos
         if st.session_state['df_facturadores'] is None:
@@ -62,11 +64,12 @@ def main():
 
 
     # Crear pestañas principales
-    tab_inicio, tab_legalizaciones, tab_rips, tab_facturacion, tab_carga = st.tabs([
+    tab_inicio, tab_legalizaciones, tab_rips, tab_facturacion, tab_procesos,tab_carga = st.tabs([
         "🏠 Inicio",
         "📋 Legalizaciones",
         "📄 RIPS",
         "💰 Facturación",
+        "🔧 Procesos Administrativos",
         "📂 Cargar Archivos"
     ])
 
@@ -82,6 +85,9 @@ def main():
     with tab_facturacion:
         render_tab_facturacion(filtros)
 
+    with tab_procesos:
+        render_tab_procesos(filtros)
+
     with tab_carga:
         render_file_upload_section()
 
@@ -93,7 +99,7 @@ def render_inicio():
     # Mostrar estado de los datos cargados
     st.subheader("📁 Estado de Datos")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         df_ppl = st.session_state.get('df_ppl')
@@ -120,6 +126,20 @@ def render_inicio():
         df_fact_elec = st.session_state.get('df_facturacion_electronica')
         count_fact_elec = len(df_fact_elec) if df_fact_elec is not None else 0
         st.metric("Facturación Electrónica", count_fact_elec)
+
+    with col4:
+        df_procesos = st.session_state.get('df_procesos')
+        count_procesos = len(df_procesos) if df_procesos is not None else 0
+        st.metric("Procesos Administrativos", count_procesos)
+
+        if df_procesos is not None and not df_procesos.empty:
+            total_cantidad = df_procesos['CANTIDAD'].sum() if 'CANTIDAD' in df_procesos.columns else 0
+            # Asegurarse de que es numérico
+            try:
+                total_cantidad = float(total_cantidad)
+                st.metric("Total Cantidad Procesos", f"{total_cantidad:,.0f}")
+            except (ValueError, TypeError):
+                st.metric("Total Cantidad Procesos", "N/A")
 
     # Instrucciones
     st.markdown("---")
