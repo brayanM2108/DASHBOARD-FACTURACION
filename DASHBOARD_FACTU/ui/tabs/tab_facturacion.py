@@ -31,6 +31,8 @@ def render_facturacion_section(filtros):
     df_facturadores = st.session_state.get('df_facturadores')
     df_fact_elec = st.session_state.get('df_facturacion_electronica')
 
+    df_por_usuario = None
+
     if df_facturacion is None or df_facturacion.empty:
         show_info_message("No hay datos de facturación. Carga un archivo en la sección de carga.")
         return
@@ -108,6 +110,10 @@ def render_facturacion_section(filtros):
     # Mostrar tabla
     st.dataframe(df_por_usuario, use_container_width=True)
 
+
+    # Verificar antes de mostrar
+    if df_por_usuario is not None and not df_por_usuario.empty:
+        st.dataframe(df_por_usuario, use_container_width=True)
 
     # Mostrar tabla de datos
     with st.expander("📊 Ver datos detallados", expanded=False):
