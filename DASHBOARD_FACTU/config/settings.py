@@ -6,6 +6,22 @@ compartidas por toda la aplicación.
 """
 
 import os
+from dotenv import load_dotenv
+import streamlit as st
+
+# Cargar variables de entorno (local)
+load_dotenv()
+
+# Función helper para obtener variables de entorno o secrets
+def get_env_var(key, default=''):
+    """Obtiene variable de entorno o secret de Streamlit"""
+    # Primero intentar desde Streamlit secrets (producción)
+    try:
+        return st.secrets.get(key, os.getenv(key, default))
+    except:
+        # Fallback a variables de entorno locales
+        return os.getenv(key, default)
+
 
 # --- Directorios ---
 PERSISTED_DATA_DIR = "persisted_data"
@@ -15,6 +31,9 @@ os.makedirs(PERSISTED_DATA_DIR, exist_ok=True)
 FACTURADORES_FILE = "FACTURADORES.xlsx"
 FACTURADORES_SHEET = 1
 
+# --- URL de Google Sheets ---
+PROCESOS_SHEET_URL = get_env_var('PROCESOS_SHEET_URL', '')
+
 # --- Rutas de archivos Parquet ---
 FILES = {
     "PPL": os.path.join(PERSISTED_DATA_DIR, "df_ppl.parquet"),
@@ -22,7 +41,8 @@ FILES = {
     "RIPS": os.path.join(PERSISTED_DATA_DIR, "df_rips.parquet"),
     "Facturacion": os.path.join(PERSISTED_DATA_DIR, "df_facturacion.parquet"),
     "Facturadores": os.path.join(PERSISTED_DATA_DIR, "df_facturadores.parquet"),
-    "FacturacionElectronica": os.path.join(PERSISTED_DATA_DIR, "df_fact_elec.parquet")
+    "FacturacionElectronica": os.path.join(PERSISTED_DATA_DIR, "df_fact_elec.parquet"),
+    "ArchivoProcesos": os.path.join(PERSISTED_DATA_DIR, "df_procesos.parquet")
 }
 
 # --- Estados válidos ---
@@ -37,7 +57,8 @@ COLUMN_MARKERS = {
     "legalizaciones": "ID_LEGALIZACION",
     "rips": "CÓDIGO",
     "facturacion": "NRO_LEGALIACION",
-    "facturacion_electronica": "IDENTIFICACION"
+    "facturacion_electronica": "IDENTIFICACION",
+    "procesos": "PROCESO"
 }
 
 # --- Nombres de columnas normalizadas ---
