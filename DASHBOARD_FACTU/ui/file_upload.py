@@ -100,13 +100,13 @@ def clear_all_data():
     from config.settings import FILES
 
     # Limpiar session_state
-    keys_to_clear = ['df_ppl', 'df_convenios', 'df_rips', 'df_facturacion', 'df_facturacion_electronica']
+    keys_to_clear = ['df_ppl', 'df_convenios', 'df_rips', 'df_facturacion', 'df_facturacion_electronica', 'df_procesos']
     for key in keys_to_clear:
         if key in st.session_state:
             st.session_state[key] = None
 
     # Eliminar todos los archivos parquet (excepto facturadores)
-    files_to_delete = ["PPL", "Convenios", "RIPS", "Facturacion", "FacturacionElectronica"]
+    files_to_delete = ["PPL", "Convenios", "RIPS", "Facturacion", "FacturacionElectronica", "ArchivoProcesos"]
     for file_key in files_to_delete:
         if file_key in FILES and os.path.exists(FILES[file_key]):
             try:
