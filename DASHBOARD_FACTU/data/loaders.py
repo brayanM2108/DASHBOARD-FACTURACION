@@ -6,6 +6,9 @@ guardar datos procesados en formato Parquet.
 """
 
 import pandas as pd
+import streamlit as st
+import io
+import os
 from config.settings import FILES, FACTURADORES_FILE, FACTURADORES_SHEET
 from utils.file_helpers import save_to_parquet, load_from_parquet, read_file_robust
 
@@ -72,18 +75,56 @@ def save_all_data(data_dict):
 def load_facturadores_master():
     """
     Carga el archivo maestro de facturadores.
+    Intenta primero desde Streamlit Secrets (producción),
+    luego desde archivo local (desarrollo).
 
     Returns:
         pd.DataFrame or None: DataFrame con facturadores o None si falla
+    """
+    # Intentar cargar desde Streamlit Secrets (producción)
+    df = _load_facturadores_from_secrets()
+    if df is not None:
+        return df
+
+    # Intentar cargar desde archivo local (desarrollo)
+    df = _load_facturadores_from_file()
+    return df
+
+
+def _load_facturadores_from_secrets():
+    """
+    Carga facturadores desde Streamlit Secrets (para producción/deploy).
+
+    Returns:
+        pd.DataFrame or None
+    """
+    try:
+        if "facturadores" in st.secrets and "data" in st.secrets["facturadores"]:
+            csv_data = st.secrets["facturadores"]["data"]
+            df = pd.read_csv(io.StringIO(csv_data))
+            df.columns = df.columns.str.strip().str.upper()
+            return df
+    except Exception as e:
+        print(f"No se pudo cargar facturadores desde secrets: {e}")
+
+    return None
+
+
+def _load_facturadores_from_file():
+    """
+    Carga facturadores desde archivo Excel local (para desarrollo).
+
+    Returns:
+        pd.DataFrame or None
     """
     try:
         df = pd.read_excel(FACTURADORES_FILE, sheet_name=FACTURADORES_SHEET)
         df.columns = df.columns.str.strip().str.upper()
         return df
     except Exception as e:
-        print(f"Error al cargar archivo de facturadores: {e}")
-        return None
+        print(f"No se pudo cargar facturadores desde archivo: {e}")
 
+    return None
 
 def load_uploaded_file(file, column_marker):
     """
@@ -148,3 +189,4 @@ def load_procesos(file_or_url):
 
     except Exception as e:
         raise ValueError(f"Error al cargar archivo de procesos: {str(e)}")
+
