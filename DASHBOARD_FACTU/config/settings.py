@@ -29,7 +29,7 @@ os.makedirs(PERSISTED_DATA_DIR, exist_ok=True)
 
 # --- Archivos maestros ---
 FACTURADORES_FILE = "FACTURADORES.xlsx"
-FACTURADORES_SHEET = 1
+FACTURADORES_SHEET = 0
 
 # --- URL de Google Sheets ---
 PROCESOS_SHEET_URL = st.secrets.get('PROCESOS_SHEET_URL', '')
