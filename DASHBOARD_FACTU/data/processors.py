@@ -300,3 +300,55 @@ def merge_facturacion_with_electronica(df_facturacion, df_fact_elec):
 
     return df_result
 
+def filtrar_por_facturadores(df, df_facturadores, columna_usuario, tipo_comparacion='DOCUMENTO'):
+    """
+    Filtra un DataFrame para mantener solo registros cuyos usuarios están en facturadores.
+
+    Args:
+        df (pd.DataFrame): DataFrame a filtrar
+        df_facturadores (pd.DataFrame): DataFrame de facturadores maestro
+        columna_usuario (str): Nombre de la columna de usuario en df
+        tipo_comparacion (str): 'DOCUMENTO' o 'NOMBRE'
+
+    Returns:
+        pd.DataFrame: DataFrame filtrado con solo usuarios válidos
+    """
+    if df is None or df.empty:
+        return df
+
+    if df_facturadores is None or df_facturadores.empty:
+        return df
+
+    if columna_usuario is None or columna_usuario not in df.columns:
+        return df
+
+    if tipo_comparacion not in df_facturadores.columns:
+        return df
+
+    # Obtener lista de valores válidos de facturadores
+    valores_validos = (
+        df_facturadores[tipo_comparacion]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .str.upper()
+        .unique().tolist()
+    )
+
+    # Normalizar columna de usuario
+    df = df.copy()
+    df['_usuario_norm'] = (
+        df[columna_usuario]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
+    # Filtrar solo los que están en facturadores
+    df_filtrado = df[df['_usuario_norm'].isin(valores_validos)].copy()
+
+    # Eliminar columna temporal
+    df_filtrado = df_filtrado.drop(columns=['_usuario_norm'])
+
+    return df_filtrado
+
