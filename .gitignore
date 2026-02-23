@@ -1,0 +1,38 @@
+# Variables de entorno
+.env
+*.env
+
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyc
+
+# Entornos virtuales
+venv/
+ENV/
+env/
+.venv
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Datos persistidos (opcional, descomentar si no quieres versionar los datos)
+# persisted_data/*.parquet
+
+# Archivos temporales
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+
+# Archivos de Excel temporales
+~$*.xlsx
+~$*.xls
+

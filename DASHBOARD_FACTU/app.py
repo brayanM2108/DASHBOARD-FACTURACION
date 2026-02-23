@@ -77,10 +77,10 @@ def main():
         render_inicio()
 
     with tab_legalizaciones:
-        render_tab_legalizacion(filtros)
+        render_tab_legalizacion()
 
     with tab_rips:
-        render_tab_rips(filtros)
+        render_tab_rips()
 
     with tab_facturacion:
         render_tab_facturacion(filtros)
