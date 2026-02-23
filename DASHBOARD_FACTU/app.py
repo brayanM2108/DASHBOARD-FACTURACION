@@ -10,7 +10,7 @@ import streamlit as st
 from config.settings import PAGE_CONFIG
 from data.loaders import load_all_persisted_data, load_facturadores_master
 from ui.file_upload import render_file_upload_section
-from ui.filters import render_state_data
+from ui.sidebar import render_state_data
 from ui.tabs.tab_legalizaciones import render_tab_legalizacion
 from ui.tabs.tab_rips import render_tab_rips
 from ui.tabs.tab_facturacion import render_tab_facturacion

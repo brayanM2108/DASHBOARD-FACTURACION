@@ -65,38 +65,3 @@ def render_user_filter(df_facturadores, key_prefix=""):
 
     return usuarios_seleccionados
 
-def render_state_data(key_prefix=""):
-    """
-    Renderiza el estado de los datos cargados en la barra lateral.
-
-    Args:
-        key_prefix (str): Prefijo para las keys (no usado actualmente)
-
-    Returns:
-        dict: Diccionario con el estado de cada dataset (True si tiene datos)
-    """
-    # --- BARRA LATERAL (FILTROS GLOBALES) ---
-    st.sidebar.header("📊 Estado de Datos")
-
-    estado = {}
-
-    # Muestra el estado de carga de cada dataset en la barra lateral
-    datasets = [
-        ("PPL", "df_ppl"),
-        ("Convenios", "df_convenios"),
-        ("RIPS", "df_rips"),
-        ("Facturación", "df_facturacion"),
-        ("Facturadores", "df_facturadores")
-    ]
-
-    for nombre, key in datasets:
-        df = st.session_state.get(key)
-        if df is not None and not df.empty:
-            st.sidebar.success(f"✅ {nombre}: {len(df):,} registros")
-            estado[key] = True
-        else:
-            st.sidebar.warning(f"⚠️ {nombre}: Sin datos")
-            estado[key] = False
-
-    st.sidebar.markdown("---")
-    return estado
