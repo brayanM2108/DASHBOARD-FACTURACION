@@ -40,20 +40,17 @@ def render_tab_rips():
             fecha_max = pd.Timestamp.now()
         fecha_fin = st.date_input("Fecha fin", value=fecha_max, key="rips_fecha_fin")
 
+    usuario_col = None
+    for col_name in ['USUARIO FACTURÓ', 'USUARIO FACTURO', 'USUARIO', 'FACTURADOR']:
+        if col_name in df_rips.columns:
+            usuario_col = col_name
+            break
 
-        # Filtro por usuario (ya viene con el nombre del facturador después del cruce)
-        usuario_col = None
-        for col_name in ['USUARIO FACTURÓ', 'USUARIO FACTURO', 'USUARIO', 'FACTURADOR']:
-            if col_name in df_rips.columns:
-                usuario_col = col_name
-                break
-
-        if usuario_col:
-            usuarios = ['Todos'] + sorted(df_rips[usuario_col].dropna().unique().tolist())
-            usuario_sel = st.selectbox("Usuario", usuarios, key="rips_usuario")
-        else:
-            usuario_sel = 'Todos'
-
+    if usuario_col:
+        usuarios = ['Todos'] + sorted(df_rips[usuario_col].dropna().unique().tolist())
+        usuario_sel = st.selectbox("Usuario", usuarios, key="rips_usuario")
+    else:
+        usuario_sel = 'Todos'
 
     usuarios_seleccionados = None if usuario_sel == 'Todos' else [usuario_sel]
 
