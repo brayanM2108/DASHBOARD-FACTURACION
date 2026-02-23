@@ -76,6 +76,58 @@ def filtrar_facturacion(df, start_date, end_date, usuarios_seleccionados=None):
     return df_filtered
 
 
+def obtener_facturacion_con_usuario(df_facturacion, df_fact_elec, df_facturadores=None):
+    """
+    Cruza facturación con facturación electrónica para obtener el usuario.
+
+    Args:
+        df_facturacion (pd.DataFrame): DataFrame de facturación
+        df_fact_elec (pd.DataFrame): DataFrame de facturación electrónica
+        df_facturadores (pd.DataFrame): DataFrame de facturadores (opcional)
+
+    Returns:
+        dict: Diccionario con df_with_usuario, df_por_usuario y error
+    """
+    from data.processors import merge_facturacion_with_electronica, merge_with_facturadores
+
+    if df_facturacion is None or df_facturacion.empty:
+        return {"df_with_usuario": None, "df_por_usuario": None, "error": "No hay datos de facturación"}
+
+    if df_fact_elec is None or df_fact_elec.empty:
+        return {"df_with_usuario": None, "df_por_usuario": None, "error": "No hay datos de facturación electrónica"}
+
+    # Hacer el cruce
+    df_with_usuario = merge_facturacion_with_electronica(df_facturacion, df_fact_elec)
+
+    # Encontrar columna de usuario
+    usuario_col = find_column_variant(df_with_usuario, COLUMN_NAMES["usuario"])
+
+    if usuario_col is None or usuario_col not in df_with_usuario.columns:
+        return {"df_with_usuario": None, "df_por_usuario": None, "error": "No se pudo determinar el usuario"}
+
+    # Filtrar registros con usuario asignado
+    df_with_usuario_valid = df_with_usuario[df_with_usuario[usuario_col].notna()].copy()
+
+    if df_with_usuario_valid.empty:
+        return {"df_with_usuario": None, "df_por_usuario": None, "error": "No se encontraron coincidencias"}
+
+    # Agrupar por usuario
+    df_por_usuario = df_with_usuario_valid.groupby(usuario_col).size().reset_index(name='CANTIDAD')
+
+    # Combinar con facturadores si está disponible
+    if df_facturadores is not None and not df_facturadores.empty:
+        df_por_usuario = merge_with_facturadores(df_por_usuario, df_facturadores, usuario_col)
+
+    df_por_usuario = df_por_usuario.sort_values('CANTIDAD', ascending=False)
+
+    return {
+        "df_with_usuario": df_with_usuario_valid,
+        "df_por_usuario": df_por_usuario,
+        "usuario_col": usuario_col,
+        "error": None
+    }
+
+
 def calcular_productividad_facturacion(df):
     """
     Calcula métricas de productividad de facturación.
