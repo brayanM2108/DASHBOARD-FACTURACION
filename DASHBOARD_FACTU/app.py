@@ -9,8 +9,8 @@ Punto de entrada de la aplicación Streamlit.
 import streamlit as st
 from config.settings import PAGE_CONFIG
 from data.loaders import load_all_persisted_data, load_facturadores_master
-from ui.filters import render_sidebar, render_state_data
 from ui.file_upload import render_file_upload_section
+from ui.filters import render_state_data
 from ui.tabs.tab_legalizaciones import render_tab_legalizacion
 from ui.tabs.tab_rips import render_tab_rips
 from ui.tabs.tab_facturacion import render_tab_facturacion
@@ -58,7 +58,7 @@ def main():
     st.title("📊 Dashboard de Productividad")
     render_state_data()
     # Renderizar sidebar con filtros
-    filtros = render_sidebar()
+
 
     # Mostrar estado de datos en sidebar
 
@@ -83,10 +83,10 @@ def main():
         render_tab_rips()
 
     with tab_facturacion:
-        render_tab_facturacion(filtros)
+        render_tab_facturacion()
 
     with tab_procesos:
-        render_tab_procesos(filtros)
+        render_tab_procesos()
 
     with tab_carga:
         render_file_upload_section()

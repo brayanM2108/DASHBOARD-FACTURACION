@@ -7,7 +7,7 @@ import re
 from config.settings import PROCESOS_SHEET_URL
 from ui.components import show_success_message, show_error_message, show_warning_message
 
-def render_tab_procesos(filtros):
+def render_tab_procesos():
     """Renderiza el tab de procesos administrativos"""
     st.header("📊 Productividad de Procesos Administrativos")
 

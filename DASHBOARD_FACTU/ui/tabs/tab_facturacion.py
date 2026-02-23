@@ -17,7 +17,7 @@ from ui.components import show_dataframe, create_download_button, show_info_mess
 from data.validators import find_column_variant
 from config.settings import COLUMN_NAMES
 
-def render_tab_facturacion(filtros):
+def render_tab_facturacion():
     """
     Renderiza la pestaña de facturación.
 
@@ -27,10 +27,10 @@ def render_tab_facturacion(filtros):
     st.header("Facturación")
 
 
-    render_facturacion_section(filtros)
+    render_facturacion_section()
 
 
-def render_facturacion_section(filtros):
+def render_facturacion_section():
     """Renderiza la sección de facturación con filtros independientes."""
 
     df_facturacion = st.session_state.get('df_facturacion')

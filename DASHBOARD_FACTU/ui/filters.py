@@ -10,62 +10,6 @@ from utils.date_helpers import get_default_date_range
 from service import obtener_lista_facturadores
 
 
-def render_sidebar():
-    """
-    Renderiza la barra lateral con filtros globales.
-
-    Returns:
-        dict: Diccionario con valores de filtros seleccionados
-    """
-    with st.sidebar:
-        st.header("🎛️ Filtros Globales")
-
-        # Filtro de fechas
-        st.subheader("📅 Rango de Fechas")
-        start_date_default, end_date_default = get_default_date_range(30)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            start_date = st.date_input(
-                "Desde",
-                value=start_date_default,
-                key="filter_start_date"
-            )
-        with col2:
-            end_date = st.date_input(
-                "Hasta",
-                value=end_date_default,
-                key="filter_end_date"
-            )
-
-        # Filtro de usuarios
-        st.subheader("👥 Facturadores")
-
-        df_facturadores = st.session_state.get('df_facturadores')
-        lista_facturadores = obtener_lista_facturadores(df_facturadores)
-
-        if lista_facturadores:
-            usuarios_seleccionados = st.multiselect(
-                "Seleccionar Facturador",
-                options=['Todos'] + lista_facturadores,
-                default=['Todos'],
-                key="filter_usuarios"
-            )
-        else:
-            usuarios_seleccionados = []
-            st.info("No hay facturadores disponibles. Carga los archivos de datos.")
-
-        # Botón para aplicar filtros
-        aplicar_filtros = st.button("🔄 Aplicar Filtros", use_container_width=True)
-
-        return {
-            "start_date": start_date,
-            "end_date": end_date,
-            "usuarios_seleccionados": usuarios_seleccionados,
-            "aplicar_filtros": aplicar_filtros
-        }
-
-
 def render_date_filter(key_prefix=""):
     """
     Renderiza un filtro de fechas independiente.
