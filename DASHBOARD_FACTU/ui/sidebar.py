@@ -57,7 +57,7 @@ def _mostrar_resumen_rapido():
     df_ppl = st.session_state.get('df_ppl')
     df_convenios = st.session_state.get('df_convenios')
     df_rips = st.session_state.get('df_rips')
-
+    df_procesos = st.session_state.get('df_procesos')
     total_legalizaciones = 0
     if df_ppl is not None:
         total_legalizaciones += len(df_ppl)
@@ -66,8 +66,8 @@ def _mostrar_resumen_rapido():
 
     st.metric("Total Legalizaciones", total_legalizaciones)
 
-    if df_rips is not None:
-        st.metric("Total RIPS", len(df_rips))
+    if df_procesos is not None:
+        st.metric("Total Procesos", len(df_procesos))
 
 
 def _mostrar_acciones_rapidas():
