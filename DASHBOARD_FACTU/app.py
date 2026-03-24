@@ -1,70 +1,59 @@
 """
-Dashboard de Productividad - Aplicación Principal
+Productivity Dashboard - Main Application
 ==================================================
-Autor: Brayan Melo
-Versión: 2.0
-==================================================
-Punto de entrada de la aplicación Streamlit.
+Author: Brayan Melo
+Version: 2.0
+=================================================
+Streamlit Application Entry Point
 """
+
 import streamlit as st
 from config.settings import PAGE_CONFIG
-from data.loaders import load_all_persisted_data, load_facturadores_master
+from data.loaders import load_all_persisted_frames, load_billers_master
 from ui.file_upload import render_file_upload_section
 from ui.sidebar import render_state_data
-from ui.tabs.tab_legalizaciones import render_tab_legalizacion
+from ui.tabs.tab_legalizations import render_tab_legalizations
 from ui.tabs.tab_rips import render_tab_rips
-from ui.tabs.tab_facturacion import render_tab_facturacion
-from ui.tabs.tab_procesos import render_tab_procesos
-
+from ui.tabs.tab_billing import render_tab_billing
+from ui.tabs.tab_manual_billing import render_tab_manual_billing
+from service.rips_service import map_document_to_name
 
 def init_session_state():
     """Inicializa el estado de sesión con datos persistidos."""
     if 'initialized' not in st.session_state:
-        # Cargar datos persistidos
-        data = load_all_persisted_data()
+        data = load_all_persisted_frames()
 
-        st.session_state['df_ppl'] = data.get('ppl')
-        st.session_state['df_convenios'] = data.get('convenios')
-        st.session_state['df_rips'] = data.get('rips')
-        st.session_state['df_facturacion'] = data.get('facturacion')
-        st.session_state['df_facturadores'] = data.get('facturadores')
-        st.session_state['df_facturacion_electronica'] = data.get('facturacion_electronica')
-        st.session_state['df_procesos'] = data.get('procesos')
 
-        # Cargar facturadores maestro si no hay datos
-        if st.session_state['df_facturadores'] is None:
-            st.session_state['df_facturadores'] = load_facturadores_master()
+        st.session_state["ppl_legalizations_df"] = data.get("ppl_legalizations")
+        st.session_state["agreement_legalizations_df"] = data.get("agreement_legalizations")
+        st.session_state["rips_df"] = data.get("rips")
+        st.session_state["billing_df"] = data.get("billing")
+        st.session_state["billers_df"] = data.get("billers")
+        st.session_state["electronic_billing_df"] = data.get("electronic_billing")
+        st.session_state["administrative_processes_df"] = data.get("administrative_processes")
 
-        # Aplicar cruce DOCUMENTO → NOMBRE a RIPS si ya hay datos cargados
-        if st.session_state['df_rips'] is not None and st.session_state['df_facturadores'] is not None:
-            from service.rips_service import cruzar_documento_a_nombre
-            st.session_state['df_rips'] = cruzar_documento_a_nombre(
-                st.session_state['df_rips'],
-                st.session_state['df_facturadores']
+        if st.session_state["billers_df"] is None:
+            st.session_state["billers_df"] = load_billers_master()
+
+        if st.session_state["rips_df"] is not None and st.session_state["billers_df"] is not None:
+            st.session_state["rips_df"] = map_document_to_name(
+                st.session_state["rips_df"],
+                st.session_state["billers_df"],
             )
 
-        st.session_state['initialized'] = True
+        st.session_state["initialized"] = True
 
 
 def main():
     """Función principal de la aplicación."""
-    # Configurar página
     st.set_page_config(**PAGE_CONFIG)
 
-    # Inicializar estado
     init_session_state()
 
-    # Título principal
     st.title("📊 Dashboard de Productividad")
     render_state_data()
-    # Renderizar sidebar con filtros
 
-
-    # Mostrar estado de datos en sidebar
-
-
-    # Crear pestañas principales
-    tab_inicio, tab_legalizaciones, tab_rips, tab_facturacion, tab_procesos,tab_carga = st.tabs([
+    tab_home, tab_legalizations, tab_rips, tab_billing, tab_manual_billing,tab_load = st.tabs([
         "🏠 Inicio",
         "📋 Legalizaciones",
         "📄 RIPS",
@@ -73,26 +62,26 @@ def main():
         "📂 Cargar Archivos"
     ])
 
-    with tab_inicio:
-        render_inicio()
+    with tab_home:
+        render_home()
 
-    with tab_legalizaciones:
-        render_tab_legalizacion()
+    with tab_legalizations:
+        render_tab_legalizations()
 
     with tab_rips:
         render_tab_rips()
 
-    with tab_facturacion:
-        render_tab_facturacion()
+    with tab_billing:
+        render_tab_billing()
 
-    with tab_procesos:
-        render_tab_procesos()
+    with tab_manual_billing:
+        render_tab_manual_billing()
 
-    with tab_carga:
+    with tab_load:
         render_file_upload_section()
 
 
-def render_inicio():
+def render_home():
     """Renderiza la pestaña de inicio con resumen general."""
     st.header("🏠 Resumen General")
 
@@ -102,46 +91,45 @@ def render_inicio():
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        df_ppl = st.session_state.get('df_ppl')
+        df_ppl = st.session_state.get('ppl_legalizations_df')
         count_ppl = len(df_ppl) if df_ppl is not None else 0
         st.metric("Legalizaciones PPL", count_ppl)
-        df_convenios = st.session_state.get('df_convenios')
+        df_convenios = st.session_state.get('agreement_legalizations_df')
         count_conv = len(df_convenios) if df_convenios is not None else 0
         st.metric("Legalizaciones Convenios", count_conv)
 
     with col2:
-        df_rips = st.session_state.get('df_rips')
+        df_rips = st.session_state.get('rips_df')
         count_rips = len(df_rips) if df_rips is not None else 0
         st.metric("RIPS", count_rips)
 
-        df_facturadores = st.session_state.get('df_facturadores')
+        df_facturadores = st.session_state.get('billers_df')
         count_fact = len(df_facturadores) if df_facturadores is not None else 0
         st.metric("Facturadores", count_fact)
 
     with col3:
-        df_facturacion = st.session_state.get('df_facturacion')
+        df_facturacion = st.session_state.get('billing_df')
         count_facturacion = len(df_facturacion) if df_facturacion is not None else 0
         st.metric("Facturación", count_facturacion)
 
-        df_fact_elec = st.session_state.get('df_facturacion_electronica')
+        df_fact_elec = st.session_state.get('electronic_billing_df')
         count_fact_elec = len(df_fact_elec) if df_fact_elec is not None else 0
         st.metric("Facturación Electrónica", count_fact_elec)
 
     with col4:
-        df_procesos = st.session_state.get('df_procesos')
+        df_procesos = st.session_state.get('administrative_processes_df')
         count_procesos = len(df_procesos) if df_procesos is not None else 0
         st.metric("Procesos Administrativos", count_procesos)
 
         if df_procesos is not None and not df_procesos.empty:
             total_cantidad = df_procesos['CANTIDAD'].sum() if 'CANTIDAD' in df_procesos.columns else 0
-            # Asegurarse de que es numérico
+
             try:
                 total_cantidad = float(total_cantidad)
                 st.metric("Total Cantidad Procesos", f"{total_cantidad:,.0f}")
             except (ValueError, TypeError):
                 st.metric("Total Cantidad Procesos", "N/A")
 
-    # Instrucciones
     st.markdown("---")
     st.subheader("📖 Instrucciones")
     st.markdown("""
