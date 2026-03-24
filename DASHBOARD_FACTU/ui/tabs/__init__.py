@@ -2,7 +2,7 @@
 Módulo de pestañas del dashboard
 """
 
-from .tab_legalizaciones import render_tab_legalizacion
+from .tab_legalizations import render_tab_legalizations
 from .tab_rips import render_tab_rips
-from .tab_facturacion import render_tab_facturacion
-from .tab_procesos import render_tab_procesos
+from .tab_billing import render_tab_billing
+from .tab_manual_billing import render_tab_manual_billing
