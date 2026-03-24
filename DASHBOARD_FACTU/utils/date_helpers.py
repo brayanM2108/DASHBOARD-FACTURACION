@@ -1,7 +1,7 @@
 """
-Utilidades para manejo de fechas
+Date Handling Tools
 =================================
-Funciones auxiliares para trabajar con fechas en el dashboard.
+Auxiliary functions for working with dates in the dashboard.
 """
 
 import pandas as pd
@@ -10,14 +10,7 @@ import datetime
 
 def parse_date_column(df, column_name):
     """
-    Convierte una columna a formato datetime.
-
-    Args:
-        df (pd.DataFrame): DataFrame con la columna
-        column_name (str): Nombre de la columna
-
-    Returns:
-        pd.DataFrame: DataFrame con columna convertida
+    Convert a column to datetime format.
     """
     if column_name not in df.columns:
         return df
@@ -28,40 +21,22 @@ def parse_date_column(df, column_name):
 
 def filter_by_date_range(df, date_column, start_date, end_date):
     """
-    Filtra un DataFrame por rango de fechas.
-
-    Args:
-        df (pd.DataFrame): DataFrame a filtrar
-        date_column (str): Nombre de la columna de fecha
-        start_date (datetime.date): Fecha inicial
-        end_date (datetime.date): Fecha final
-
-    Returns:
-        pd.DataFrame: DataFrame filtrado
+    Filter a DataFrame by date range.
     """
     if date_column not in df.columns:
         return df
 
-    # Asegurar que la columna sea datetime
     df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
 
-    # Eliminar filas con fechas inválidas
     df = df.dropna(subset=[date_column])
 
-    # Filtrar por rango
     mask = (df[date_column].dt.date >= start_date) & (df[date_column].dt.date <= end_date)
     return df[mask]
 
 
 def get_default_date_range(days_back=30):
     """
-    Obtiene un rango de fechas por defecto.
-
-    Args:
-        days_back (int): Número de días hacia atrás desde hoy
-
-    Returns:
-        tuple: (start_date, end_date)
+    It obtains a default date range.
     """
     end_date = datetime.date.today()
     start_date = end_date - datetime.timedelta(days=days_back)
