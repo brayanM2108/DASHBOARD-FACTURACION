@@ -1,35 +1,22 @@
 """
-Visualizaciones y gráficos
+Visualizations and Graphs
 ===========================
-Funciones para crear gráficos con Plotly y Matplotlib.
+Functions for creating graphs with Plotly and Matplotlib.
 """
 
 import streamlit as st
 import plotly.express as px
-import pandas as pd
-
 
 def plot_bar_chart(df, x_col, y_col, title, color=None, sortable=True, sort_key=None):
     """
-    Crea un gráfico de barras con Plotly.
-
-    Args:
-        df (pd.DataFrame): DataFrame con los datos
-        x_col (str): Columna para el eje X
-        y_col (str): Columna para el eje Y
-        title (str): Título del gráfico
-        color (str): Columna para colorear (opcional)
-        sortable (bool): Si True, muestra opciones de ordenamiento
-        sort_key (str): Clave única para los widgets de ordenamiento
+    Create a bar chart with Plotly.
     """
     if df is None or df.empty:
         st.info("No hay datos para graficar.")
         return
 
-    # Crear copia del dataframe
     df_plot = df.copy()
 
-    # Opción de ordenamiento
     if sortable:
         col1, col2 = st.columns([3, 1])
         with col2:
@@ -45,8 +32,6 @@ def plot_bar_chart(df, x_col, y_col, title, color=None, sortable=True, sort_key=
             elif orden == "Menor a Mayor":
                 df_plot = df_plot.sort_values(by=y_col, ascending=True)
 
-    # Asegurar que la columna X se trate como texto (categoría) para evitar
-    # que valores numéricos se muestren como decimales en el eje X
     df_plot[x_col] = df_plot[x_col].astype(str)
 
     fig = px.bar(
@@ -65,30 +50,19 @@ def plot_bar_chart(df, x_col, y_col, title, color=None, sortable=True, sort_key=
         xaxis_type='category'
     )
 
-    st.plotly_chart(fig, use_container_width="stretch")
+    st.plotly_chart(fig, use_container_width = "stretch")
 
 
 def plot_line_chart(df, x_col, y_col, title, color=None, sortable=True, sort_key=None):
     """
-    Crea un gráfico de líneas con Plotly.
-
-    Args:
-        df (pd.DataFrame): DataFrame con los datos
-        x_col (str): Columna para el eje X
-        y_col (str): Columna para el eje Y
-        title (str): Título del gráfico
-        color (str): Columna para colorear (opcional)
-        sortable (bool): Si True, muestra opciones de ordenamiento
-        sort_key (str): Clave única para los widgets de ordenamiento
+    Create a line graph with Plotly.
     """
     if df is None or df.empty:
         st.info("No hay datos para graficar.")
         return
 
-    # Crear copia del dataframe
     df_plot = df.copy()
 
-    # Opción de ordenamiento
     if sortable:
         col1, col2 = st.columns([3, 1])
         with col2:
@@ -117,59 +91,48 @@ def plot_line_chart(df, x_col, y_col, title, color=None, sortable=True, sort_key
 
     fig.update_layout(xaxis_tickangle=-45)
 
-    st.plotly_chart(fig, use_container_width="stretch")
+    st.plotly_chart(fig, use_container_width = "stretch")
 
 
-def plot_metrics_summary(metricas):
+def plot_metrics_summary(metrics):
     """
-    Muestra un resumen de métricas en tarjetas.
-
-    Args:
-        metricas (dict): Diccionario con métricas
-            Debe contener: 'total', 'promedio_diario'
+    It displays a summary of metrics in cards.
     """
     col1, col2 = st.columns(2)
 
     with col1:
-        st.metric("Total Registros", f"{metricas.get('total', 0):,}")
+        st.metric("Total Registros", f"{metrics.get('total', 0):,}")
 
     with col2:
-        promedio = metricas.get('promedio_diario', 0)
+        promedio = metrics.get('daily_average', 0)
         st.metric("Promedio Diario", f"{promedio:.2f}")
 
 
-def plot_productivity_charts(metricas, tipo="Productividad"):
+def plot_productivity_charts(metrics, tipo="Productividad"):
     """
-    Muestra gráficos de productividad (por usuario y por fecha).
-
-    Args:
-        metricas (dict): Diccionario con métricas calculadas
-        tipo (str): Tipo de datos ("PPL", "Convenios", "RIPS", etc.)
+    Displays productivity graphs (by user and by date).
     """
     st.subheader(f"📊 Análisis de {tipo}")
 
-    # Métricas generales
-    plot_metrics_summary(metricas)
+    plot_metrics_summary(metrics)
 
-    # Gráfico por usuario
-    if metricas.get('por_usuario') is not None and not metricas['por_usuario'].empty:
+    if metrics.get('by_user') is not None and not metrics['by_user'].empty:
         st.markdown("### Por Usuario")
         plot_bar_chart(
-            metricas['por_usuario'],
-            x_col=metricas['por_usuario'].columns[0],  # Primera columna (usuario)
-            y_col='CANTIDAD',
+            metrics['by_user'],
+            x_col=metrics['by_user'].columns[0],
+            y_col='COUNT',
             title=f"{tipo} por Usuario",
             sortable=True,
             sort_key=f"{tipo}_usuario"
         )
 
-    # Gráfico por fecha
-    if metricas.get('por_fecha') is not None and not metricas['por_fecha'].empty:
+    if metrics.get('by_date') is not None and not metrics['by_date'].empty:
         st.markdown("### Por Fecha")
         plot_line_chart(
-            metricas['por_fecha'],
-            x_col='FECHA',
-            y_col='CANTIDAD',
+            metrics['by_date'],
+            x_col='DATE',
+            y_col='COUNT',
             title=f"{tipo} por Fecha",
             sortable=True,
             sort_key=f"{tipo}_fecha"
