@@ -1,354 +1,272 @@
 """
-Procesamiento de datos
-=======================
-Funciones para transformar y limpiar datos cargados.
+Data processing
+===============
+Functions to transform and clean loaded datasets.
 """
 
 import pandas as pd
 from config.settings import (
-    ESTADOS_VALIDOS_LEGALIZACIONES,
-    ESTADOS_VALIDOS_RIPS,
-    ESTADOS_VALIDOS_FACTURACION_ELECTRONICA,
-    CONVENIO_PPL
+    VALID_STATES_LEGALIZATIONS,
+    VALID_STATES_RIPS,
+    VALID_STATES_INVOICING_ELECTRONIC,
+    PPL_NAME
 )
 from utils.date_helpers import parse_date_column
 
+REQUIRED_PROCESS_COLUMNS = ("FECHA", "NOMBRE", "DOCUMENTO", "PROCESO", "CANTIDAD")
+PROCESS_TEXT_COLUMNS = ("NOMBRE", "DOCUMENTO", "PROCESO")
 
-def process_legalizaciones(df, estado_column="ESTADO", fecha_column="FECHA_REAL", convenio_column="CONVENIO"):
+ERROR_MISSING_PROCESS_COLUMNS = (
+    "Missing required columns: {missing}. Available columns: {available}"
+)
+
+COMPARISON_MODE_DOCUMENT = "DOCUMENTO"
+COMPARISON_MODE_NAME = "NOMBRE"
+
+def _normalize_text_series(series: pd.Series) -> pd.Series:
+    """Normalize text values for stable matching."""
+    return series.astype(str).str.strip().str.upper()
+
+
+def _normalize_column_names(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize dataframe column names to uppercase without extra spaces."""
+    df_copy = df.copy()
+    df_copy.columns = df_copy.columns.astype(str).str.strip().str.upper()
+    return df_copy
+
+
+def _normalize_object_columns_in_place(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize all object columns (trim + uppercase)."""
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = _normalize_text_series(df[col])
+    return df
+
+def _ensure_required_columns(df: pd.DataFrame, required_columns: tuple[str, ...]) -> None:
+    """Raise ValueError when required columns are missing."""
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        raise ValueError(
+            ERROR_MISSING_PROCESS_COLUMNS.format(
+                missing=", ".join(missing),
+                available=", ".join(df.columns.tolist()),
+            )
+        )
+
+def split_legalizations(
+        df: pd.DataFrame,
+        state_column: str = "ESTADO",
+        date_column: str = "FECHA_REAL",
+        agreement_column: str = "CONVENIO",
+):
     """
-    Procesa el DataFrame de legalizaciones.
-
-    Args:
-        df (pd.DataFrame): DataFrame de legalizaciones
-        estado_column (str): Nombre de columna de estado
-        fecha_column (str): Nombre de columna de fecha
-        convenio_column (str): Nombre de columna de convenio
-
-    Returns:
-        tuple: (df_ppl, df_convenios) - DataFrames separados
+    Process legalizations dataframe and split into PPL and agreements.
+    Returns: (ppl_df, agreements_df)
     """
     if df is None or df.empty:
         return None, None
 
-    # Convertir fecha
-    df = parse_date_column(df, fecha_column)
+    result_df = df.copy()
+    result_df = parse_date_column(result_df, date_column)
 
-    # Normalizar y filtrar por estado válido
-    if estado_column in df.columns:
-        # Normalizar valores de estado a mayúsculas
-        df[estado_column] = df[estado_column].astype(str).str.strip().str.upper()
-        df = df[df[estado_column].isin(ESTADOS_VALIDOS_LEGALIZACIONES)]
+    if state_column in result_df.columns:
+        result_df[state_column] = _normalize_text_series(result_df[state_column])
+        result_df = result_df[result_df[state_column].isin(VALID_STATES_LEGALIZATIONS)]
 
-    # Separar PPL y Convenios
-    df_ppl = None
-    df_convenios = None
+    if agreement_column not in result_df.columns:
+        return None, None
 
-    if convenio_column in df.columns:
-        df_ppl = df[df[convenio_column] == CONVENIO_PPL].copy()
-        df_convenios = df[df[convenio_column] != CONVENIO_PPL].copy()
+    ppl_df = result_df[result_df[agreement_column] == PPL_NAME].copy()
+    agreements_df = result_df[result_df[agreement_column] != PPL_NAME].copy()
+    return ppl_df, agreements_df
 
-    return df_ppl, df_convenios
-
-
-def process_rips(df, estado_column="ESTADO", fecha_column="FECHA_REAL"):
-    """
-    Procesa el DataFrame de RIPS.
-
-    Args:
-        df (pd.DataFrame): DataFrame de RIPS
-        estado_column (str): Nombre de columna de estado
-        fecha_column (str): Nombre de columna de fecha
-
-    Returns:
-        pd.DataFrame: DataFrame procesado
-    """
+def process_rips_data(df: pd.DataFrame,state_column: str = "ESTADO",date_column: str = "FECHA_REAL",
+):
+    """Process RIPS dataframe."""
     if df is None or df.empty:
         return None
 
-    # Convertir fecha
-    df = parse_date_column(df, fecha_column)
+    result_df = df.copy()
+    result_df = parse_date_column(result_df, date_column)
 
-    # Normalizar y filtrar por estado válido
-    if estado_column in df.columns:
-        df[estado_column] = df[estado_column].astype(str).str.strip().str.upper()
-        df = df[df[estado_column].isin(ESTADOS_VALIDOS_RIPS)]
+    if state_column in result_df.columns:
+        result_df[state_column] = _normalize_text_series(result_df[state_column])
+        result_df = result_df[result_df[state_column].isin(VALID_STATES_RIPS)]
 
-    return df
+    return result_df
 
-
-def process_facturacion(df, fecha_column="FECHA_FACTURA"):
-    """
-    Procesa el DataFrame de facturación.
-
-    Args:
-        df (pd.DataFrame): DataFrame de facturación
-        fecha_column (str): Nombre de columna de fecha
-
-    Returns:
-        pd.DataFrame: DataFrame procesado
-    """
+def process_billing_data(
+        df: pd.DataFrame,
+        date_column: str = "FECHA_FACTURA",
+):
+    """Process billing dataframe."""
     if df is None or df.empty:
         return None
 
-    # Convertir fecha
-    df = parse_date_column(df, fecha_column)
+    result_df = df.copy()
+    result_df = parse_date_column(result_df, date_column)
+    return result_df
 
-    return df
-
-
-def process_facturacion_electronica(df, estado_column="ESTADO", fecha_column="FECHA RADICACIÓN"):
-    """
-    Procesa el DataFrame de facturación electrónica.
-
-    Args:
-        df (pd.DataFrame): DataFrame de facturación electrónica
-        estado_column (str): Nombre de columna de estado
-        fecha_column (str): Nombre de columna de fecha
-
-    Returns:
-        pd.DataFrame: DataFrame procesado
-    """
+def process_electronic_billing_data(
+        df: pd.DataFrame,
+        state_column: str = "ESTADO",
+        date_column: str = "FECHA RADICACIÓN",
+):
+    """Process electronic billing dataframe."""
     if df is None or df.empty:
         return None
 
-    # Convertir fecha
-    df = parse_date_column(df, fecha_column)
+    result_df = df.copy()
+    result_df = parse_date_column(result_df, date_column)
 
-    # Normalizar y filtrar por estado válido
-    if estado_column in df.columns:
-        df[estado_column] = df[estado_column].astype(str).str.strip().str.upper()
-        df = df[df[estado_column].isin(ESTADOS_VALIDOS_FACTURACION_ELECTRONICA)]
+    if state_column in result_df.columns:
+        result_df[state_column] = _normalize_text_series(result_df[state_column])
+        result_df = result_df[result_df[state_column].isin(VALID_STATES_INVOICING_ELECTRONIC)]
 
-    return df
+    return result_df
 
-
-def merge_with_facturadores(df, df_facturadores, usuario_column="USUARIO"):
-    """
-    Combina un DataFrame con información de facturadores.
-
-    Args:
-        df (pd.DataFrame): DataFrame principal
-        df_facturadores (pd.DataFrame): DataFrame de facturadores
-        usuario_column (str): Nombre de columna de usuario
-
-    Returns:
-        pd.DataFrame: DataFrame combinado con información de facturadores
-    """
-    if df is None or df.empty or df_facturadores is None or df_facturadores.empty:
+def merge_with_billers(
+        df: pd.DataFrame,
+        billers_df: pd.DataFrame,
+        user_column: str = "USUARIO",
+):
+    """Left-merge dataframe with billers master info."""
+    if df is None or df.empty or billers_df is None or billers_df.empty:
         return df
 
-    if usuario_column not in df.columns or "USUARIO" not in df_facturadores.columns:
+    if user_column not in df.columns or "USUARIO" not in billers_df.columns:
         return df
 
-    # Realizar merge
-    df_merged = pd.merge(
-        df,
-        df_facturadores,
-        left_on=usuario_column,
-        right_on="USUARIO",
-        how="left"
-    )
+    return pd.merge(df,
+                    billers_df,
+                    left_on=user_column,
+                    right_on="USUARIO"
+                    , how="left")
 
-    return df_merged
-
-
-def aggregate_by_user(df, usuario_column="USUARIO", date_column=None, group_by_date=False):
+def merge_billing_with_electronic_billing(
+        billing_df: pd.DataFrame,
+        electronic_billing_df: pd.DataFrame,
+):
     """
-    Agrupa datos por usuario y opcionalmente por fecha.
-
-    Args:
-        df (pd.DataFrame): DataFrame a agregar
-        usuario_column (str): Nombre de columna de usuario
-        date_column (str): Nombre de columna de fecha (opcional)
-        group_by_date (bool): Si True, agrupa también por fecha
-
-    Returns:
-        pd.DataFrame: DataFrame agregado
+    Assign user to billing records by matching:
+    billing.NRO_FACTURACLI -> electronic_billing.FACTURA
     """
-    if df is None or df.empty or usuario_column not in df.columns:
-        return None
+    if billing_df is None or billing_df.empty:
+        return billing_df
 
-    if group_by_date and date_column and date_column in df.columns:
-        # Agregar columna de fecha (solo día)
-        df['FECHA'] = df[date_column].dt.date
-        agg_df = df.groupby([usuario_column, 'FECHA']).size().reset_index(name='CANTIDAD')
+    if electronic_billing_df is None or electronic_billing_df.empty:
+        return billing_df
+
+    result_df = billing_df.copy()
+    normalized_e_billing_df = electronic_billing_df.copy()
+
+    _normalize_object_columns_in_place(result_df)
+    _normalize_object_columns_in_place(normalized_e_billing_df)
+
+    state_col = "ESTADO" if "ESTADO" in normalized_e_billing_df.columns else "Estado"
+    if state_col in normalized_e_billing_df.columns:
+        active_e_billing_df = normalized_e_billing_df[
+            normalized_e_billing_df[state_col] == "ACTIVO"
+            ].copy()
     else:
-        agg_df = df.groupby(usuario_column).size().reset_index(name='CANTIDAD')
+        active_e_billing_df = normalized_e_billing_df.copy()
+
+    if "FACTURA" in active_e_billing_df.columns and "USUARIO" in active_e_billing_df.columns:
+        user_map = (
+            active_e_billing_df
+            .dropna(subset=["FACTURA", "USUARIO"])
+            .drop_duplicates(subset=["FACTURA"])
+            .set_index("FACTURA")["USUARIO"]
+        )
+
+        if "NRO_FACTURACLI" in result_df.columns:
+            result_df["USUARIO"] = result_df["NRO_FACTURACLI"].map(user_map)
+
+    return result_df
+
+def process_administrative_processes(df: pd.DataFrame):
+    """
+    Process administrative processes dataframe (e.g., Google Sheets source).
+    Normalizes columns, validates structure, converts types, and cleans rows.
+    """
+    if df is None or df.empty:
+        return None
+
+    result_df = df.copy()
+
+    # Detect whether first row contains actual headers.
+    first_row_upper = result_df.iloc[0].astype(str).str.upper()
+    if "FECHA" in first_row_upper.values or "NOMBRE" in first_row_upper.values:
+        result_df.columns = result_df.iloc[0].astype(str).str.strip().str.upper()
+        result_df = result_df.iloc[1:].reset_index(drop=True)
+    else:
+        result_df = _normalize_column_names(result_df)
+
+    _ensure_required_columns(result_df, REQUIRED_PROCESS_COLUMNS)
+
+    result_df = result_df.dropna(how="all")
+    result_df["FECHA"] = pd.to_datetime(result_df["FECHA"], errors="coerce")
+    result_df["CANTIDAD"] = pd.to_numeric(result_df["CANTIDAD"], errors="coerce")
+    result_df = result_df.dropna(subset=["FECHA", "NOMBRE", "CANTIDAD"])
+
+    for col in PROCESS_TEXT_COLUMNS:
+        if col in result_df.columns:
+            result_df[col] = result_df[col].astype(str).str.strip()
+
+    return result_df
+
+def aggregate_records_by_user(
+        df: pd.DataFrame,
+        user_column: str = "USUARIO",
+        date_column: str | None = None,
+        group_by_date: bool = False,
+):
+    """Aggregate records by user, optionally by date."""
+    if df is None or df.empty or user_column not in df.columns:
+        return None
+
+    result_df = df.copy()
+
+    if group_by_date and date_column and date_column in result_df.columns:
+        result_df["DATE"] = pd.to_datetime(result_df[date_column], errors="coerce").dt.date
+        agg_df = result_df.groupby([user_column, "DATE"]).size().reset_index(name="COUNT")
+    else:
+        agg_df = result_df.groupby(user_column).size().reset_index(name="COUNT")
 
     return agg_df
 
-
-def process_procesos(df):
+def filter_by_billers(
+        df: pd.DataFrame,
+        billers_df: pd.DataFrame,
+        user_column: str,
+        comparison_mode: str = COMPARISON_MODE_DOCUMENT,
+):
     """
-    Procesa el DataFrame de procesos administrativos desde Google Sheets.
-
-    Args:
-        df (pd.DataFrame): DataFrame de procesos cargado desde Google Sheets
-
-    Returns:
-        pd.DataFrame: DataFrame procesado con columnas normalizadas
-    """
-    if df is None or df.empty:
-        return None
-
-    # Detectar si la primera fila contiene encabezados reales
-    # Verificar si la primera fila tiene valores como 'FECHA', 'NOMBRE', etc.
-    primera_fila = df.iloc[0].astype(str).str.upper()
-
-    if 'FECHA' in primera_fila.values or 'NOMBRE' in primera_fila.values:
-        # La primera fila son los encabezados reales
-        df.columns = df.iloc[0].astype(str).str.strip().str.upper()
-        df = df.iloc[1:].reset_index(drop=True)
-    else:
-        # Normalizar nombres de columnas existentes
-        df.columns = df.columns.str.strip().str.upper()
-
-    # Validar columnas requeridas
-    columnas_requeridas = ['FECHA', 'NOMBRE', 'DOCUMENTO', 'PROCESO', 'CANTIDAD']
-
-    # Buscar variantes de nombres de columnas
-    mapeo_columnas = {}
-    for col_requerida in columnas_requeridas:
-        if col_requerida not in df.columns:
-            # Buscar variantes
-            for col in df.columns:
-                if col_requerida in col or col in col_requerida:
-                    mapeo_columnas[col] = col_requerida
-                    break
-
-    # Renombrar columnas si se encontraron variantes
-    if mapeo_columnas:
-        df = df.rename(columns=mapeo_columnas)
-
-    # Verificar columnas faltantes
-    columnas_faltantes = [col for col in columnas_requeridas if col not in df.columns]
-    if columnas_faltantes:
-        raise ValueError(f"Faltan las siguientes columnas: {', '.join(columnas_faltantes)}. Columnas disponibles: {', '.join(df.columns.tolist())}")
-
-    # Eliminar filas completamente vacías
-    df = df.dropna(how='all')
-
-    # Convertir fecha al formato correcto
-    try:
-        # Intentar múltiples formatos de fecha
-        df['FECHA'] = pd.to_datetime(df['FECHA'], errors='coerce')
-    except Exception as e:
-        print(f"Advertencia: Error al convertir fechas: {e}")
-
-    # Convertir cantidad a numérico
-    df['CANTIDAD'] = pd.to_numeric(df['CANTIDAD'], errors='coerce')
-
-    # Eliminar filas con valores nulos en columnas críticas
-    df = df.dropna(subset=['FECHA', 'NOMBRE', 'CANTIDAD'])
-
-    # Limpiar espacios en blanco en columnas de texto
-    for col in ['NOMBRE', 'DOCUMENTO', 'PROCESO']:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip()
-
-    return df
-
-def merge_facturacion_with_electronica(df_facturacion, df_fact_elec):
-    """
-    Cruza facturación con facturación electrónica para obtener el USUARIO.
-
-    Busca y asigna el usuario de facturación electrónica a cada factura mediante
-    un cruce BUSCARX entre NRO_FACTURACLI (facturación) y FACTURA (electrónica).
-
-    Args:
-        df_facturacion (pd.DataFrame): DataFrame de facturación con columna 'NRO_FACTURACLI'
-        df_fact_elec (pd.DataFrame): DataFrame de facturación electrónica con columnas
-                                     'FACTURA', 'USUARIO' y 'ESTADO'
-
-    Returns:
-        pd.DataFrame: DataFrame de facturación con columna 'USUARIO' agregada/actualizada
-    """
-    if df_facturacion is None or df_facturacion.empty:
-        return df_facturacion
-
-    if df_fact_elec is None or df_fact_elec.empty:
-        return df_facturacion
-
-    # Crear una copia para no modificar el original
-    df_result = df_facturacion.copy()
-
-    # Normalizar columnas de texto a mayúsculas
-    for df in [df_result, df_fact_elec]:
-        for col in df.columns:
-            if df[col].dtype == object:
-                df[col] = df[col].astype(str).str.strip().str.upper()
-
-    # Filtrar solo facturas electrónicas en estado ACTIVO
-    estado_col = 'ESTADO' if 'ESTADO' in df_fact_elec.columns else 'Estado'
-    if estado_col in df_fact_elec.columns:
-        df_fact_elec_activa = df_fact_elec[df_fact_elec[estado_col] == 'ACTIVO'].copy()
-    else:
-        df_fact_elec_activa = df_fact_elec.copy()
-
-    # Crear mapeo FACTURA → USUARIO
-    if 'FACTURA' in df_fact_elec_activa.columns and 'USUARIO' in df_fact_elec_activa.columns:
-        mapa_usuario = (
-            df_fact_elec_activa
-            .dropna(subset=['FACTURA', 'USUARIO'])
-            .drop_duplicates(subset=['FACTURA'])
-            .set_index('FACTURA')['USUARIO']
-        )
-
-        # Asignar USUARIO a facturación mediante NRO_FACTURACLI
-        if 'NRO_FACTURACLI' in df_result.columns:
-            df_result['USUARIO'] = df_result['NRO_FACTURACLI'].map(mapa_usuario)
-
-    return df_result
-
-def filtrar_por_facturadores(df, df_facturadores, columna_usuario, tipo_comparacion='DOCUMENTO'):
-    """
-    Filtra un DataFrame para mantener solo registros cuyos usuarios están en facturadores.
-
-    Args:
-        df (pd.DataFrame): DataFrame a filtrar
-        df_facturadores (pd.DataFrame): DataFrame de facturadores maestro
-        columna_usuario (str): Nombre de la columna de usuario en df
-        tipo_comparacion (str): 'DOCUMENTO' o 'NOMBRE'
-
-    Returns:
-        pd.DataFrame: DataFrame filtrado con solo usuarios válidos
+    Keep only rows where user value exists in billers master comparison column.
+    comparison_mode: 'DOCUMENTO' or 'NOMBRE'
     """
     if df is None or df.empty:
         return df
-
-    if df_facturadores is None or df_facturadores.empty:
+    if billers_df is None or billers_df.empty:
+        return df
+    if user_column is None or user_column not in df.columns:
+        return df
+    if comparison_mode not in billers_df.columns:
         return df
 
-    if columna_usuario is None or columna_usuario not in df.columns:
-        return df
-
-    if tipo_comparacion not in df_facturadores.columns:
-        return df
-
-    # Obtener lista de valores válidos de facturadores
-    valores_validos = (
-        df_facturadores[tipo_comparacion]
+    valid_values = (
+        billers_df[comparison_mode]
         .dropna()
         .astype(str)
         .str.strip()
         .str.upper()
-        .unique().tolist()
+        .unique()
+        .tolist()
     )
 
-    # Normalizar columna de usuario
-    df = df.copy()
-    df['_usuario_norm'] = (
-        df[columna_usuario]
-        .astype(str)
-        .str.strip()
-        .str.upper()
-    )
+    result_df = df.copy()
+    result_df["_user_norm"] = _normalize_text_series(result_df[user_column])
+    filtered_df = result_df[result_df["_user_norm"].isin(valid_values)].copy()
+    filtered_df = filtered_df.drop(columns=["_user_norm"])
 
-    # Filtrar solo los que están en facturadores
-    df_filtrado = df[df['_usuario_norm'].isin(valores_validos)].copy()
-
-    # Eliminar columna temporal
-    df_filtrado = df_filtrado.drop(columns=['_usuario_norm'])
-
-    return df_filtrado
-
+    return filtered_df
