@@ -1,35 +1,18 @@
 """
-Componentes reutilizables de UI
+Reusable UI Components
 ================================
-Componentes comunes de Streamlit para usar en todo el dashboard.
+Common Streamlit components for use throughout the dashboard.
 """
 
 import streamlit as st
-import pandas as pd
-
 
 def show_metric_card(label, value, delta=None, delta_color="normal"):
-    """
-    Muestra una tarjeta de métrica.
 
-    Args:
-        label (str): Etiqueta de la métrica
-        value (str/int/float): Valor de la métrica
-        delta (str/int/float): Cambio/delta (opcional)
-        delta_color (str): Color del delta ("normal", "inverse", "off")
-    """
     st.metric(label=label, value=value, delta=delta, delta_color=delta_color)
 
 
 def show_dataframe(df, title=None, use_container_width="stretch"):
-    """
-    Muestra un DataFrame con título opcional.
 
-    Args:
-        df (pd.DataFrame): DataFrame a mostrar
-        title (str): Título opcional
-        use_container_width (bool): Si debe usar el ancho completo del contenedor
-    """
     if title:
         st.subheader(title)
 
@@ -37,37 +20,31 @@ def show_dataframe(df, title=None, use_container_width="stretch"):
         st.info("No hay datos para mostrar.")
         return
 
-    st.dataframe(df, use_container_width=use_container_width)
-
+    st.dataframe(df, use_container_width = use_container_width)
 
 def show_success_message(message):
-    """Muestra un mensaje de éxito."""
+    """Show success message."""
     st.success(f"✅ {message}")
 
 
 def show_error_message(message):
-    """Muestra un mensaje de error."""
+    """Show error message."""
     st.error(f"❌ {message}")
 
 
 def show_warning_message(message):
-    """Muestra un mensaje de advertencia."""
+    """Show warning message."""
     st.warning(f"⚠️ {message}")
 
 
 def show_info_message(message):
-    """Muestra un mensaje informativo."""
+    """Show info message."""
     st.info(f"ℹ️ {message}")
 
 
 def create_download_button(df, filename, label="📥 Descargar datos"):
     """
-    Crea un botón para descargar un DataFrame como CSV.
-
-    Args:
-        df (pd.DataFrame): DataFrame a descargar
-        filename (str): Nombre del archivo
-        label (str): Texto del botón
+    Create download button.
     """
     if df is None or df.empty:
         return
