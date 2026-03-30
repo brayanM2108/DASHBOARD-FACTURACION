@@ -24,29 +24,54 @@ from openpyxl.styles import (
 from openpyxl.utils import get_column_letter
 
 # ---------------------------------------------------------------------------
-# Style constants
+# Theme / Style constants (improved palette for better aesthetics & contrast)
 # ---------------------------------------------------------------------------
 
-FONT_NAME = "sans-serif"
+# Core palette (hex without '#')
+MAIN_COLOR = "3B82F6"        # calmer bright blue (primary)
+CONTRAST_COLOR = "0B2545"    # deep navy (text / header accent)
+ACCENT_COLOR = "F97316"      # warm orange (call-to-action / highlights)
+BACKGROUND_LIGHT = "F8FAFF"  # very light blue background for sheets
+HEADER_FILL_COLOR = "E6F0FF" # soft header blue (easier on the eyes)
+ROW_FILL_ODD_COLOR = "F2F7FF" # subtle alternating row fill
+BORDER_COLOR = "D6E4FF"      # soft border color
+
+# Semantic colors
+SUCCESS_COLOR = "2E7D32"     # green for positive variations
+DANGER_COLOR = "C62828"      # red for negative variations
+NEUTRAL_COLOR = "4B5563"     # neutral gray for muted text
+
+# Paleta para Plotly (usa las constantes ya definidas en el archivo)
+PLOTLY_PALETTE = [
+    f"#{MAIN_COLOR}",
+    "#60A5FA",  # lighter blue
+    "#A78BFA",  # purple
+    f"#{ACCENT_COLOR}",
+    "#34D399",  # greenish
+    "#FB7185",  # pinkish
+]
+
+# Font choice
+FONT_NAME = "Calibri"
 
 # Header row of data tables
-_HEADER_FILL = PatternFill("solid", start_color="4C6EF5")
-_HEADER_FONT = Font(name=FONT_NAME, bold=True, color="FFFFFF", size=10)
+_HEADER_FILL = PatternFill(fill_type="solid", fgColor=HEADER_FILL_COLOR)
+_HEADER_FONT = Font(name=FONT_NAME, bold=True, color="0B2545", size=10)
 
 # Executive summary label column
-_LABEL_FONT = Font(name=FONT_NAME, bold=True, size=10)
-_VALUE_FONT = Font(name=FONT_NAME, size=10)
+_LABEL_FONT = Font(name=FONT_NAME, bold=True, size=10, color=CONTRAST_COLOR)
+_VALUE_FONT = Font(name=FONT_NAME, size=10, color=CONTRAST_COLOR)
 
-# Section title inside a sheet
-_SECTION_FONT = Font(name=FONT_NAME, bold=True, size=12, color="4C6EF5")
+# Section title inside a sheet (uses accent for emphasis)
+_SECTION_FONT = Font(name=FONT_NAME, bold=True, size=12, color=ACCENT_COLOR)
 
-# Cover / sheet tab accent
-_ACCENT_FILL = PatternFill("solid", start_color="000927")
+# Cover / sheet tab accent (dark background with white text)
+_ACCENT_FILL = PatternFill(fill_type="solid", fgColor=CONTRAST_COLOR)
 _ACCENT_FONT = Font(name=FONT_NAME, bold=True, color="FFFFFF", size=14)
 
-# Alternating row fill
-_ROW_FILL_ODD = PatternFill("solid", start_color="4C6EF5")
-_THIN_BORDER_SIDE = Side(style="thin", color="4C6EF5")
+# Alternating row fill and cell borders
+_ROW_FILL_ODD = PatternFill(fill_type="solid", fgColor=ROW_FILL_ODD_COLOR)
+_THIN_BORDER_SIDE = Side(style="thin", color=BORDER_COLOR)
 _CELL_BORDER = Border(
     left=_THIN_BORDER_SIDE,
     right=_THIN_BORDER_SIDE,
@@ -55,9 +80,10 @@ _CELL_BORDER = Border(
 )
 
 # Variation colors
-_GREEN_FONT = Font(name=FONT_NAME, bold=True, color="375623", size=10)
-_RED_FONT = Font(name=FONT_NAME, bold=True, color="843C0C", size=10)
-_NEUTRAL_FONT = Font(name=FONT_NAME, color="595959", size=10)
+_GREEN_FONT = Font(name=FONT_NAME, bold=True, color=SUCCESS_COLOR, size=10)
+_RED_FONT = Font(name=FONT_NAME, bold=True, color=DANGER_COLOR, size=10)
+_NEUTRAL_FONT = Font(name=FONT_NAME, color=NEUTRAL_COLOR, size=10)
+
 
 
 # ---------------------------------------------------------------------------
@@ -177,28 +203,63 @@ def _insert_chart(ws, fig, anchor_cell: str) -> None:
     image = _figure_to_excel_image(fig)
     ws.add_image(image, anchor_cell)
 
-
 def _safe_bar(df: pd.DataFrame | None, x_col: str, y_col: str, title: str):
     if df is None or df.empty or x_col not in df.columns or y_col not in df.columns:
         return None
-    fig = px.bar(df, x=x_col, y=y_col, title=title, text=y_col)
-    fig.update_layout(xaxis_tickangle=-45)
+
+    n_unique = df[x_col].nunique() if x_col in df.columns else 0
+    try:
+        if n_unique > 1:
+            fig = px.bar(
+                df,
+                x=x_col,
+                y=y_col,
+                title=title,
+                text=y_col,
+                color=x_col,
+                color_discrete_sequence=PLOTLY_PALETTE,
+            )
+        else:
+            fig = px.bar(
+                df,
+                x=x_col,
+                y=y_col,
+                title=title,
+                text=y_col,
+            )
+            fig.update_traces(marker_color=f"#{MAIN_COLOR}")
+    except Exception:
+
+        fig = px.bar(df, x=x_col, y=y_col, title=title, text=y_col)
+
+    fig.update_layout(template="plotly_white", xaxis_tickangle=-45, colorway=PLOTLY_PALETTE)
     fig.update_traces(textposition="outside")
     return fig
-
 
 def _safe_line(df: pd.DataFrame | None, x_col: str, y_col: str, title: str):
     if df is None or df.empty or x_col not in df.columns or y_col not in df.columns:
         return None
-    fig = px.line(df, x=x_col, y=y_col, title=title, markers=True)
-    fig.update_layout(xaxis_tickangle=-45)
-    return fig
 
+    fig = px.line(df, x=x_col, y=y_col, title=title, markers=True)
+    if len(fig.data) == 1:
+        fig.update_traces(line=dict(color=f"#{MAIN_COLOR}"), marker=dict(color=f"#{MAIN_COLOR}"))
+    fig.update_layout(template="plotly_white", xaxis_tickangle=-45, colorway=PLOTLY_PALETTE)
+    return fig
 
 def _safe_pie(df: pd.DataFrame | None, names_col: str, values_col: str, title: str):
     if df is None or df.empty or names_col not in df.columns or values_col not in df.columns:
         return None
-    return px.pie(df, names=names_col, values=values_col, title=title, hole=0.35)
+
+    fig = px.pie(
+        df,
+        names=names_col,
+        values=values_col,
+        title=title,
+        hole=0.35,
+        color_discrete_sequence=PLOTLY_PALETTE,
+    )
+    fig.update_layout(template="plotly_white")
+    return fig
 
 # ---------------------------------------------------------------------------
 # Per-module sheet writers
