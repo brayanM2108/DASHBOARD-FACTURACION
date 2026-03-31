@@ -64,6 +64,13 @@ COLUMN_NAMES = {
     "convenio": "CONVENIO"
 }
 
+COLUMN_NAMES_LEGALIZATIONS = {
+    "usuario": ["USUARIO", "USUARIO FACTURÓ", "USUARIO FACTURO", "USUARIO FACTUR", "USUARIO_FACTURO"],
+    "fecha": "FECHA LEGALIZACION",
+    "estado": "ESTADO",
+    "convenio": "CONVENIO",
+}
+
 # --- Special Values ---
 PPL_NAME = "Patrimonio Autonomo Fondo Atención Salud PPL 2024"
 
