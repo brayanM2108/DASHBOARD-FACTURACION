@@ -56,7 +56,7 @@ def _ensure_required_columns(df: pd.DataFrame, required_columns: tuple[str, ...]
 def split_legalizations(
         df: pd.DataFrame,
         state_column: str = "ESTADO",
-        date_column: str = "FECHA_REAL",
+        date_column: str = "FECHA LEGALIZACION",
         agreement_column: str = "CONVENIO",
 ):
     """

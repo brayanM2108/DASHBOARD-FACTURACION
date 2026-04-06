@@ -53,7 +53,7 @@ def main():
     st.title("📊 Dashboard de Productividad")
     render_state_data()
 
-    tab_home, tab_legalizations, tab_rips, tab_billing, tab_manual_billing,tab_load = st.tabs([
+    tab_home, tab_legalizations, tab_rips, tab_billing, tab_manual_billing, tab_load = st.tabs([
         "🏠 Inicio",
         "📋 Legalizaciones",
         "📄 RIPS",

@@ -10,7 +10,7 @@ Agreements sub-tabs simultaneously, and drives the Excel export.
 import pandas as pd
 import streamlit as st
 
-from config.settings import COLUMN_NAMES, COLUMN_NAMES_LEGALIZATIONS
+from config.settings import COLUMN_NAMES
 from data.validators import find_first_column_variant
 from service.legalizations_service import (
     calculate_legalizations_productivity,
@@ -154,7 +154,7 @@ def render_tab_legalizations():
     excel_bytes = export_legalizations_report(report, period_label=period)
 
     st.download_button(
-        label="⬇️ Descargar informe Excel",
+        label="📥 Descargar informe de productividad (Excel)",
         data=excel_bytes,
         file_name=filename,
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
