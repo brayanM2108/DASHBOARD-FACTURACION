@@ -10,8 +10,15 @@ import streamlit as st
 from config.settings import COLUMN_NAMES
 from data.validators import find_first_column_variant
 from service.rips_service import calculate_rips_productivity, filter_rips
-from ui.components import create_download_button, show_dataframe, show_info_message
 from ui.visualizations import plot_productivity_charts
+from service.report_service import build_rips_report
+from utils.excel_exporter import export_rips_report
+from ui.components import (
+    create_download_button,
+    create_excel_download_button,
+    show_dataframe,
+    show_info_message,
+)
 
 def _safe_min_date(df: pd.DataFrame, date_col: str | None) -> pd.Timestamp:
     if date_col and date_col in df.columns:
@@ -20,7 +27,7 @@ def _safe_min_date(df: pd.DataFrame, date_col: str | None) -> pd.Timestamp:
             return min_value
     return pd.Timestamp.now()
 
-ALL_OPTION = "All"
+ALL_OPTION = "Todos"
 
 def _safe_max_date(df: pd.DataFrame, date_col: str | None) -> pd.Timestamp:
     if date_col and date_col in df.columns:
@@ -53,13 +60,13 @@ def render_tab_rips():
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input(
-            "Start date",
+            "Fecha Inicio",
             value=_safe_min_date(df_rips, date_col),
             key="rips_start_date",
         )
     with col2:
         end_date = st.date_input(
-            "End date",
+            "Fecha Fin",
             value=_safe_max_date(df_rips, date_col),
             key="rips_end_date",
         )
@@ -78,6 +85,19 @@ def render_tab_rips():
     if filtered_df is None or filtered_df.empty:
         show_info_message("No hay datos que coincidan con los filtros seleccionados.")
         return
+
+    period_label = f"{start_date} - {end_date}"
+    rips_report = build_rips_report(
+        df_current=filtered_df,
+        df_previous=None,
+    )
+    rips_excel = export_rips_report(rips_report, period_label=period_label)
+
+    create_excel_download_button(
+    rips_excel,
+        filename=f"rips_productivity_{start_date}_{end_date}.xlsx",
+        label="📥 Descargar informe de productividad (Excel)",
+    )
 
     metrics = calculate_rips_productivity(filtered_df)
     plot_productivity_charts(metrics, tipo="RIPS")
