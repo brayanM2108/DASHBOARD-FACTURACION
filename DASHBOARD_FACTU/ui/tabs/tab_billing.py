@@ -14,9 +14,14 @@ from service.billing_service import (
     filter_billing,
     get_billing_with_user,
 )
-from ui.components import create_download_button, show_dataframe, show_info_message
 from ui.visualizations import plot_bar_chart, plot_productivity_charts
 
+from service.report_service import build_billing_report
+from utils.excel_exporter import export_billing_report
+from ui.components import (
+    create_excel_download_button,
+    show_info_message, create_download_button, show_dataframe,
+)
 
 def _safe_min_date(df: pd.DataFrame, date_col: str | None) -> pd.Timestamp:
     if date_col and date_col in df.columns:
@@ -55,13 +60,13 @@ def render_billing_section():
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input(
-            "Start date",
+            "Fecha Inicio",
             value=_safe_min_date(billing_df, date_col),
             key="billing_start_date",
         )
     with col2:
         end_date = st.date_input(
-            "End date",
+            "Fecha Fin",
             value=_safe_max_date(billing_df, date_col),
             key="billing_end_date",
         )
@@ -80,12 +85,25 @@ def render_billing_section():
         billing_df,
         start_date,
         end_date,
-        selected_users=None,
+        selected_users=usuarios_seleccionados,
     )
 
     if filtered_billing_df is None or filtered_billing_df.empty:
         show_info_message("No hay datos que coincidan con los filtros seleccionados.")
         return
+
+    period_label = f"{start_date} - {end_date}"
+    billing_report = build_billing_report(
+    df_current=filtered_billing_df,
+    df_previous=None,
+    )
+    billing_excel = export_billing_report(billing_report, period_label=period_label)
+
+    create_excel_download_button(
+    billing_excel,
+    filename=f"billing_productivity_{start_date}_{end_date}.xlsx",
+    label="📥 Descargar informe de productividad (Excel)",
+)
 
     st.subheader("📈 Facturación por Usuario")
 
@@ -105,18 +123,26 @@ def render_billing_section():
         if not billing_by_user_df.empty:
             nombre_col = 'NOMBRE' if 'NOMBRE' in billing_by_user_df.columns else usuario_col
 
+        df_plot = billing_by_user_df.copy()
+
+        if 'NOMBRE' in df_plot.columns:
+            df_plot['LABEL_USUARIO'] = df_plot['NOMBRE'].fillna(df_plot[usuario_col]).astype(str)
+            df_plot['LABEL_USUARIO'] = df_plot['LABEL_USUARIO'].replace(['nan', 'None', ''], df_plot[usuario_col].astype(str))
+        else:
+            df_plot['LABEL_USUARIO'] = df_plot[usuario_col].astype(str)
+
             plot_bar_chart(
-                billing_by_user_df,
-                x_col=nombre_col,
+                df_plot,
+                x_col='LABEL_USUARIO',
                 y_col='COUNT',
                 title="Facturación por Usuario"
             )
-            st.dataframe(billing_by_user_df, use_container_width = "stretch")
+            st.dataframe(billing_by_user_df, width = "stretch")
 
     metrics = calculate_billing_productivity(filtered_billing_df)
     plot_productivity_charts(metrics, tipo="Facturacion")
 
 
     with st.expander("📊 Ver datos detallados", expanded=False):
-        show_dataframe(filtered_billing_df, title="Datos de Facturación")
+        show_dataframe(filtered_billing_df, title="Datos de facturacion")
         create_download_button(filtered_billing_df, "facturacion.csv")
