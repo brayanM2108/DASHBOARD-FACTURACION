@@ -58,6 +58,7 @@ def _top5_by_user(by_user_df: pd.DataFrame | None) -> pd.DataFrame | None:
 def build_billing_report(
         df_current: pd.DataFrame,
         df_previous: pd.DataFrame | None = None,
+        by_user_df: pd.DataFrame | None = None,
 ) -> dict:
     """
     Build billing report data.
@@ -65,6 +66,7 @@ def build_billing_report(
     Args:
         df_current: Filtered billing dataframe for the current period.
         df_previous: Filtered billing dataframe for the previous period (optional).
+        by_user_df: Optional pre-aggregated productivity by user dataframe.
 
     Returns:
         dict with keys: executive_summary, by_user, by_date
@@ -72,13 +74,15 @@ def build_billing_report(
     metrics_current = calculate_billing_productivity(df_current)
     metrics_previous = calculate_billing_productivity(df_previous) if df_previous is not None else None
 
+    by_user_current = by_user_df if by_user_df is not None else metrics_current["by_user"]
+
     previous_total = metrics_previous["total"] if metrics_previous else 0
     previous_daily_avg = metrics_previous["daily_average"] if metrics_previous else 0
 
     executive_summary = {
         "total": metrics_current["total"],
         "daily_average": metrics_current["daily_average"],
-        "top5_by_user": _top5_by_user(metrics_current["by_user"]),
+        "top5_by_user": _top5_by_user(by_user_current),
         "variation": _build_variation_block(metrics_current["total"], previous_total),
         "variation_daily_avg": _build_variation_block(
             metrics_current["daily_average"], previous_daily_avg
@@ -87,7 +91,7 @@ def build_billing_report(
 
     return {
         "executive_summary": executive_summary,
-        "by_user": metrics_current["by_user"],
+        "by_user": by_user_current,
         "by_date": metrics_current["by_date"],
     }
 
