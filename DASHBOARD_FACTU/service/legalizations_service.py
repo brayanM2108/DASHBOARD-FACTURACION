@@ -124,7 +124,7 @@ def calculate_legalizations_productivity(df, category="PPL"):
         return result
 
     user_col = find_first_column_variant(df, COLUMN_NAMES["usuario"])
-    date_col = find_first_column_variant(df, COLUMN_NAMES["fecha"])
+    date_col = find_first_column_variant(df, COLUMN_NAMES_LEGALIZATIONS["fecha"])
 
     total = len(df)
 

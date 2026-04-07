@@ -10,7 +10,7 @@ Agreements sub-tabs simultaneously, and drives the Excel export.
 import pandas as pd
 import streamlit as st
 
-from config.settings import COLUMN_NAMES
+from config.settings import COLUMN_NAMES, COLUMN_NAMES_LEGALIZATIONS
 from data.validators import find_first_column_variant
 from service.legalizations_service import (
     calculate_legalizations_productivity,
@@ -98,7 +98,7 @@ def render_tab_legalizations():
 
     # Date range — derive bounds from whichever dataset is available
     reference_df = ppl_df if ppl_df is not None and not ppl_df.empty else agreements_df
-    date_col_ref = find_first_column_variant(reference_df, COLUMN_NAMES["fecha"])
+    date_col_ref = find_first_column_variant(reference_df, COLUMN_NAMES_LEGALIZATIONS["fecha"])
 
     col1, col2 = st.columns(2)
     with col1:
