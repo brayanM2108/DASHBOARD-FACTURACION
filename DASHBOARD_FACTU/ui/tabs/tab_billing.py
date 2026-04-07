@@ -92,22 +92,48 @@ def render_billing_section():
         show_info_message("No hay datos que coincidan con los filtros seleccionados.")
         return
 
+    # Build user mapping first so Excel report can reuse the same by-user dataset.
+    result = get_billing_with_user(filtered_billing_df, e_billing_df, billers_df)
+
+    # Base dataframe for time metrics/charts. Defaults to date-filtered billing.
+    productivity_base_df: pd.DataFrame = filtered_billing_df
+
+    report_by_user_df = None
+    if not result["error"]:
+        mapped_df = result.get("billing_with_user_df")
+        if isinstance(mapped_df, pd.DataFrame):
+            productivity_base_df = mapped_df
+        report_by_user_df = result.get("billing_by_user_df")
+        usuario_col_tmp = result.get("user_column")
+        if usuarios_seleccionados:
+            if usuario_col_tmp and usuario_col_tmp in productivity_base_df.columns:
+                productivity_base_df = productivity_base_df[
+                    productivity_base_df[usuario_col_tmp].isin(usuarios_seleccionados)
+                ]
+            if (
+                report_by_user_df is not None
+                and usuario_col_tmp
+                and usuario_col_tmp in report_by_user_df.columns
+            ):
+                report_by_user_df = report_by_user_df[
+                    report_by_user_df[usuario_col_tmp].isin(usuarios_seleccionados)
+                ]
+
     period_label = f"{start_date} - {end_date}"
     billing_report = build_billing_report(
-    df_current=filtered_billing_df,
-    df_previous=None,
+        df_current=productivity_base_df,
+        df_previous=None,
+        by_user_df=report_by_user_df,
     )
     billing_excel = export_billing_report(billing_report, period_label=period_label)
 
     create_excel_download_button(
-    billing_excel,
-    filename=f"billing_productivity_{start_date}_{end_date}.xlsx",
-    label="📥 Descargar informe de productividad (Excel)",
-)
+        billing_excel,
+        filename=f"billing_productivity_{start_date}_{end_date}.xlsx",
+        label="📥 Descargar informe de productividad (Excel)",
+    )
 
     st.subheader("📈 Facturación por Usuario")
-
-    result = get_billing_with_user(filtered_billing_df, e_billing_df, billers_df)
 
     if result["error"]:
         st.warning(result["error"])
@@ -139,8 +165,10 @@ def render_billing_section():
             )
             st.dataframe(billing_by_user_df, width = "stretch")
 
-    metrics = calculate_billing_productivity(filtered_billing_df)
-    plot_productivity_charts(metrics, tipo="Facturacion")
+    metrics = calculate_billing_productivity(productivity_base_df)
+    metrics_for_summary = dict(metrics)
+    metrics_for_summary["by_user"] = None
+    plot_productivity_charts(metrics_for_summary, tipo="Facturacion")
 
 
     with st.expander("📊 Ver datos detallados", expanded=False):
