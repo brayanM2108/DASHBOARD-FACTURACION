@@ -11,7 +11,7 @@ def show_metric_card(label, value, delta=None, delta_color="normal"):
     st.metric(label=label, value=value, delta=delta, delta_color=delta_color)
 
 
-def show_dataframe(df, title=None, use_container_width="stretch"):
+def show_dataframe(df, title=None, width="stretch"):
 
     if title:
         st.subheader(title)
@@ -20,7 +20,7 @@ def show_dataframe(df, title=None, use_container_width="stretch"):
         st.info("No hay datos para mostrar.")
         return
 
-    st.dataframe(df, use_container_width = use_container_width)
+    st.dataframe(df, width = width)
 
 def show_success_message(message):
     """Show success message."""
