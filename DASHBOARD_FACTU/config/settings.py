@@ -66,7 +66,7 @@ COLUMN_NAMES = {
 
 COLUMN_NAMES_LEGALIZATIONS = {
     "usuario": ["USUARIO", "USUARIO FACTURÓ", "USUARIO FACTURO", "USUARIO FACTUR", "USUARIO_FACTURO"],
-    "fecha": ["FECHA LEGALIZACION", "FECHA LEGALIZACIÓN", "FECHALEGALIZACION", "FechaLegalizacion"],
+    "fecha": ["FECHA_REAL"],
     "estado": "ESTADO",
     "convenio": "CONVENIO",
 }
