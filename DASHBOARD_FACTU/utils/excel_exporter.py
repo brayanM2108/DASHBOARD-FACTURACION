@@ -130,6 +130,19 @@ def _auto_column_widths(ws, min_width: int = 12, max_width: int = 40) -> None:
             max(max_len + 4, min_width), max_width
         )
 
+def _apply_currency_format_by_header(ws, header_row: int, header_names: set[str]) -> None:
+    """Apply currency format to columns identified by header name."""
+    target_cols = []
+    for col_idx in range(1, ws.max_column + 1):
+        val = ws.cell(row=header_row, column=col_idx).value
+        if isinstance(val, str) and val.strip().upper() in {h.upper() for h in header_names}:
+            target_cols.append(col_idx)
+
+    for col_idx in target_cols:
+        for row_idx in range(header_row + 1, ws.max_row + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = '"$"#,##0'
 
 def _write_section_title(ws, row: int, title: str) -> None:
     cell = ws.cell(row=row, column=1, value=title)
@@ -336,6 +349,24 @@ def export_billing_report(report: dict, period_label: str = "") -> bytes:
     """
     wb = Workbook()
     _write_standard_sheets(wb, report, "Facturación", period_label)
+    # Currency format for billing tables (COUNT = valor facturado)
+    ws_users = wb["Productividad por Usuario"]
+    ws_dates = wb["Tendencia Diaria"]
+    ws_summary = wb["Resumen Ejecutivo"]
+
+    _apply_currency_format_by_header(ws_users, header_row=3, header_names={"COUNT"})
+    _apply_currency_format_by_header(ws_dates, header_row=3, header_names={"COUNT"})
+    _apply_currency_format_by_header(ws_summary, header_row=14, header_names={"COUNT"})
+
+    ws_records = wb.create_sheet("Tendencia Registros")
+    _write_section_title(ws_records, 1, "Cantidad de Registros")
+    _write_dataframe(ws_records, report.get("by_date_records"), start_row=3)
+    _auto_column_widths(ws_records)
+
+
+    if isinstance(ws_summary["B6"].value, (int, float)):
+        ws_summary["B6"].number_format = '"$"#,##0'
+
     _add_standard_charts_sheet(wb, report, "Facturación")
     return _to_bytes(wb)
 
@@ -475,18 +506,36 @@ def export_processes_report(report: dict, period_label: str = "") -> bytes:
 def _add_standard_charts_sheet(wb: Workbook, report: dict, module_name: str) -> None:
     ws = wb.create_sheet("Graficos")
 
-    by_user = report.get("by_user")
-    by_date = report.get("by_date")
+    by_user = report.get("by_user")                  # valor facturado por usuario
+    by_date = report.get("by_date")                  # valor facturado por fecha
+    by_user_records = report.get("by_user_records")  # registros por usuario
 
     if by_user is not None and not by_user.empty:
         user_col = by_user.columns[0]
-        fig_user = _safe_bar(by_user, user_col, "COUNT", f"{module_name} por Usuario")
+        fig_user = _safe_bar(by_user, user_col, "COUNT", f"{module_name} - Valor por Usuario")
         if fig_user:
             _insert_chart(ws, fig_user, "A1")
 
-    fig_date = _safe_line(by_date, "DATE", "COUNT", f"Tendencia Diaria - {module_name}")
-    if fig_date:
-        _insert_chart(ws, fig_date, "A30")
+    if by_user_records is not None and not by_user_records.empty:
+        user_col_records = by_user_records.columns[0]
+        fig_records_user = _safe_bar(
+            by_user_records,
+            user_col_records,
+            "REGISTROS",
+            f"{module_name} - Registros por Usuario",
+        )
+        if fig_records_user:
+            _insert_chart(ws, fig_records_user, "M1")
+
+    fig_value_date = _safe_line(
+        by_date,
+        "DATE",
+        "COUNT",
+        f"{module_name} - Valor por Fecha",
+    )
+    if fig_value_date:
+        _insert_chart(ws, fig_value_date, "A30")
+
 
 def _add_legalizations_charts_sheet(wb: Workbook, report: dict) -> None:
     ws = wb.create_sheet("Graficos")
