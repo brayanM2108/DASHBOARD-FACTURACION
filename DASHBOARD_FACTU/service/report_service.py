@@ -78,7 +78,7 @@ def build_billing_report(
 
     previous_total = metrics_previous["total"] if metrics_previous else 0
     previous_daily_avg = metrics_previous["daily_average"] if metrics_previous else 0
-
+    user_col = by_user_current.columns[0] if by_user_current is not None and not by_user_current.empty else "USUARIO"
     executive_summary = {
         "total": metrics_current["total"],
         "daily_average": metrics_current["daily_average"],
@@ -96,6 +96,11 @@ def build_billing_report(
         "by_date_records": (
             metrics_current["by_date_dual"][["DATE", "REGISTROS"]]
             if metrics_current.get("by_date_dual") is not None
+            else None
+        ),
+        "by_user_records": (
+            metrics_current["by_user_dual"][[user_col, "REGISTROS"]]
+            if metrics_current.get("by_user_dual") is not None
             else None
         ),
     }
