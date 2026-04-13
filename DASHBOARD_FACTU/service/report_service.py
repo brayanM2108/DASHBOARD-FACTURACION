@@ -7,7 +7,7 @@ Consumed by excel_exporter.py to generate downloadable Excel files.
 
 import pandas as pd
 
-from service.billing_service import calculate_billing_productivity
+from service.billing_electronic_service import calculate_billing_productivity
 from service.legalizations_service import calculate_legalizations_productivity
 from service.manual_billing_service import build_chart_datasets, build_processes_kpis, get_summary_by_person, get_summary_by_process
 from service.rips_service import calculate_rips_productivity
@@ -93,6 +93,11 @@ def build_billing_report(
         "executive_summary": executive_summary,
         "by_user": by_user_current,
         "by_date": metrics_current["by_date"],
+        "by_date_records": (
+            metrics_current["by_date_dual"][["DATE", "REGISTROS"]]
+            if metrics_current.get("by_date_dual") is not None
+            else None
+        ),
     }
 
 
