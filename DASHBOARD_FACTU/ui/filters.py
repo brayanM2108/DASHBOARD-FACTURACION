@@ -43,12 +43,12 @@ def render_user_filter(df_facturadores, key_prefix=""):
         st.info("No hay facturadores disponibles.")
         return ['Todos']
 
-    usuarios_seleccionados = st.multiselect(
+    selected_users = st.multiselect(
         "Seleccionar Facturador",
         options=['Todos'] + billers_list,
         default=['Todos'],
         key=f"{key_prefix}_usuarios"
     )
 
-    return usuarios_seleccionados
+    return selected_users
 
