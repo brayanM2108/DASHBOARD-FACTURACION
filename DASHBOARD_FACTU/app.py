@@ -13,7 +13,6 @@ from data.loaders import load_all_persisted_frames_cached, load_billers_master_c
 from ui.file_upload import render_file_upload_section
 from ui.sidebar import render_state_data
 from ui.tabs.tab_legalizations import render_tab_legalizations
-from ui.tabs.tab_rips import render_tab_rips
 from ui.tabs.tab_manual_billing import render_tab_manual_billing
 from service.rips_service import map_document_to_name
 from ui.tabs.tab_billing_electronic import render_billing_electronic_section
@@ -25,6 +24,7 @@ pio.kaleido.scope.chromium_args = (
     "--single-process",
     "--disable-gpu"
 )
+
 def init_session_state():
 
     if 'initialized' not in st.session_state:
@@ -59,10 +59,9 @@ def main():
     st.title("📊 Dashboard de Productividad")
     render_state_data()
 
-    tab_home, tab_legalizations, tab_rips, tab_electronic_billing, tab_manual_billing, tab_load = st.tabs([
+    tab_home, tab_legalizations, tab_electronic_billing, tab_manual_billing, tab_load = st.tabs([
         "🏠 Inicio",
         "📋 Legalizaciones",
-        "📄 RIPS",
         "💰 Facturación",
         "🔧 Procesos Administrativos",
         "📂 Cargar Archivos"
@@ -73,9 +72,6 @@ def main():
 
     with tab_legalizations:
         render_tab_legalizations()
-
-    with tab_rips:
-        render_tab_rips()
 
     with tab_electronic_billing:
         render_billing_electronic_section()
@@ -93,7 +89,7 @@ def render_home():
 
     st.subheader("📁 Estado de Datos")
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         df_ppl = st.session_state.get('ppl_legalizations_df')
@@ -103,21 +99,16 @@ def render_home():
         count_conv = len(df_convenios) if df_convenios is not None else 0
         st.metric("Legalizaciones Convenios", count_conv)
 
-    with col2:
-        df_rips = st.session_state.get('rips_df')
-        count_rips = len(df_rips) if df_rips is not None else 0
-        st.metric("RIPS", count_rips)
-
         df_facturadores = st.session_state.get('billers_df')
         count_fact = len(df_facturadores) if df_facturadores is not None else 0
         st.metric("Facturadores", count_fact)
 
-    with col3:
+    with col2:
         df_fact_elec = st.session_state.get('electronic_billing_df')
         count_fact_elec = len(df_fact_elec) if df_fact_elec is not None else 0
         st.metric("Facturación Electrónica", count_fact_elec)
 
-    with col4:
+    with col3:
         df_procesos = st.session_state.get('administrative_processes_df')
         count_procesos = len(df_procesos) if df_procesos is not None else 0
         st.metric("Procesos Administrativos", count_procesos)

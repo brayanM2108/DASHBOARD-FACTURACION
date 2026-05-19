@@ -31,9 +31,6 @@ def render_file_upload_section():
     with st.expander("📁 Cargar Legalizaciones", expanded=False):
         render_legalizaciones_upload()
 
-    with st.expander("📄 Cargar RIPS", expanded=False):
-        render_rips_upload()
-
     with st.expander("🧾 Cargar Facturación Electrónica", expanded=False):
         render_facturacion_electronica_upload()
 
@@ -169,7 +166,6 @@ def render_legalizaciones_upload():
 
                 st.success("✅ Paso 2 completado: Validación exitosa")
 
-                # Verificar que hay datos procesados
                 df_ppl = result.get("ppl_df")
                 df_convenios = result.get("agreements_df")
 
@@ -205,9 +201,9 @@ def render_legalizaciones_upload():
                 import traceback
                 st.code(traceback.format_exc())
 
-
+"""
 def render_rips_upload():
-    """Render the RIPS uploader"""
+#    Render the RIPS uploader
     uploaded_file = st.file_uploader(
         "Selecciona archivo de RIPS",
         type=['csv', 'xlsx'],
@@ -259,7 +255,8 @@ def render_rips_upload():
                 show_error_message(f"Error inesperado: {e}")
                 import traceback
                 st.code(traceback.format_exc())
-
+"""
+                
 def render_facturacion_electronica_upload():
     """Render the electronic invoicing uploader."""
     uploaded_file = st.file_uploader(
@@ -302,15 +299,6 @@ def render_facturacion_electronica_upload():
 def render_facturadores_reload():
     """Render the button to recharge billing devices."""
     df_facturadores = st.session_state.get('billers_df')
-
-    if df_facturadores is not None and not df_facturadores.empty:
-        st.success(f"✅ Facturadores cargados: {len(df_facturadores):,} registros")
-        st.info(f"📋 Columnas disponibles: {', '.join(df_facturadores.columns.tolist())}")
-
-        with st.expander("👀 Ver muestra de datos"):
-            st.dataframe(df_facturadores.head(10))
-    else:
-        st.warning("⚠️ No hay facturadores cargados")
 
     st.info("El archivo de facturadores se carga automáticamente desde `FACTURADORES.xlsx`.")
 
