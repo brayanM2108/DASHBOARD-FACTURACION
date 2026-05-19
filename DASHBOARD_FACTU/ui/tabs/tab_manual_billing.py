@@ -205,32 +205,29 @@ def render_tab_manual_billing():
         show_error_message(f"Error aplicando filtros: {exc}")
         return
 
-    if filtered_df is None or filtered_df.empty:
-        show_warning_message("No hay registros para los filtros seleccionados.")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Mostrar todo (quitar fechas)", key="btn_show_all"):
-                st.session_state["manual_proc_period"] = (min_date, max_date)
-                st.rerun()
-        with c2:
-            if st.button("Descargar informe (vacío)", key="btn_download_empty"):
-                processes_report = build_processes_report_cached(
-                    df_current=pd.DataFrame(),
-                    df_previous=None,
-                    selected_person=selected_person if selected_person != ALL_OPTION else None,
-                    selected_process=selected_process if selected_process != ALL_OPTION else None,
-                )
-                safe_start = _safe_date_str(start_date)
-                safe_end = _safe_date_str(end_date)
-                period_label = f"{safe_start} - {safe_end}" if (safe_start or safe_end) else "Período no especificado"
-                processes_excel = export_processes_report_cached(processes_report, period_label=period_label)
-                filename_suffix = f"_{selected_person}" if selected_person else ""
-                filename = f"INFORME_PRODUCTIVIDAD_PROCESOSMANUALES_{filename_suffix}.xlsx"
+    safe_start = _safe_date_str(start_date)
+    safe_end = _safe_date_str(end_date)
+    period_label = f"{safe_start} - {safe_end}" if (safe_start or safe_end) else "Período no especificado"
 
-                create_excel_download_button(processes_excel, filename=filename, label=" Descargar informe (vacío)")
-        return
+    try:
+        processes_report = build_processes_report_cached(
+            df_current=filtered_df,
+            df_previous=None,
+            selected_person=selected_person if selected_person != ALL_OPTION else None,
+            selected_process=selected_process if selected_process != ALL_OPTION else None,
+        )
+        processes_excel = export_processes_report_cached(processes_report, period_label=period_label)
+        filename_suffix = f"{selected_person}" if selected_person else ""
+        filename = f"INFORME_PRODUCTIVIDAD_PROCESOSMANUALES_{filename_suffix}.xlsx"
+        create_excel_download_button(
+            processes_excel,
+            filename=filename,
+            label="Descargar informe de productividad (Excel)",
+        )
+    except Exception as exc:
+        show_error_message(f"Error generando o exportando el informe: {exc}")
 
-    # KPIs from service
+
     try:
         kpis = build_processes_kpis(filtered_df)
     except Exception as exc:
@@ -315,28 +312,3 @@ def render_tab_manual_billing():
         except Exception as exc:
             show_warning_message(f"Error generando gráfico de tendencia: {exc}")
 
-
-    st.subheader("Descargar informe de Productividad")
-    safe_start = _safe_date_str(start_date)
-    safe_end = _safe_date_str(end_date)
-    period_label = f"{safe_start} - {safe_end}" if (safe_start or safe_end) else "Período no especificado"
-
-    csv_filename = _sanitize_filename(f"administrative_processes_{safe_start}_{safe_end}.csv")
-
-    try:
-        processes_report = build_processes_report_cached(
-            df_current=filtered_df,
-            df_previous=None,
-            selected_person=selected_person if selected_person != ALL_OPTION else None,
-            selected_process=selected_process if selected_process != ALL_OPTION else None,
-        )
-        processes_excel = export_processes_report_cached(processes_report, period_label=period_label)
-        filename_suffix = f"_{selected_person}" if selected_person else ""
-        filename = f"INFORME_PRODUCTIVIDAD_PROCESOSMANUALES_{filename_suffix}.xlsx"
-        create_excel_download_button(
-            processes_excel,
-            filename=filename,
-            label=" Descargar informe de productividad (Excel)",
-        )
-    except Exception as exc:
-        show_error_message(f"Error generando o exportando el informe: {exc}")
